@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+
 FROM eclipse-temurin:21-jdk-alpine
 
 WORKDIR /app
