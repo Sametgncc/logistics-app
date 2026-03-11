@@ -1,24 +1,49 @@
 # 🚚 Logistics App Backend
 
-Bu proje, modern bir lojistik yönetim sisteminin backend servislerini içerir.
+![Java](https://img.shields.io/badge/Java-21-blue)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
+![Docker](https://img.shields.io/badge/Docker-Containerization-lightblue)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blueviolet)
+![Build](https://img.shields.io/badge/Build-Maven-orange)
 
-## 🛠 Kullanılan Teknolojiler
-* **Java 21** & **Spring Boot 3.x**
-* **PostgreSQL** (Database)
-* **Docker & Docker Compose** (Containerization)
-* **Spring Security & JWT** (Authentication)
-* **Lombok & MapStruct** (Utility)
+Modern bir lojistik yönetim sistemi için geliştirilmiş **backend servisleri** bu projede yer almaktadır.
 
-## Başlangıç
+---
+
+## 🛠 Teknolojiler
+
+- **Java 21 & Spring Boot 3.x** – REST API geliştirme
+- **PostgreSQL** – Veritabanı yönetimi
+- **Docker & Docker Compose** – Containerizasyon ve kolay dağıtım
+- **Spring Security & JWT** – Kimlik doğrulama ve güvenlik
+- **Lombok & MapStruct** – Kod basitleştirme ve veri dönüşümleri
+
+---
+
+## ⚡ Başlangıç
 
 ### Gereksinimler
-* Docker Desktop (Mac için)
-* Java 21+
-* Maven
+
+- Docker Desktop (Mac/Windows/Linux)
+- Java 21+
+- Maven
 
 ### Kurulum ve Çalıştırma
-1. Projeyi klonlayın.
-2. Docker klasörüne gidin ve veritabanını başlatın:
-   ```bash
-   cd docker
-   docker compose up -d
+
+1. Projeyi klonlayın:
+
+```bash
+
+git clone <repo-url>
+cd logistics-app
+
+Docker ile veritabanını başlatın
+
+cd docker
+docker-compose up -d --build
+
+
+Backend artık http://localhost:8080
+ adresinde çalışıyor.
+
+.env dosyası ile veritabanı bilgilerini güvenli şekilde yönetebilirsiniz.
