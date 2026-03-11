@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgis/postgis:15-3.4
+    container_name: logistics-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: logistics
+      POSTGRES_USER: admin122
+      POSTGRES_PASSWORD: nakli.122
+    ports:
+      - "5433:5432"
+    
+    logistics-service:
+    build: ../services/logistics-service
+    container_name: logistics-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
