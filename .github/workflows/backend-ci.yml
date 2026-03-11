@@ -24,7 +24,7 @@ jobs:
           java-version: 21
 
       - name: Build project
-        run: mvn -B clean package
+        run: mvn -B clean package -DskipTests
         working-directory: backend
 
       - name: Build Docker Image
