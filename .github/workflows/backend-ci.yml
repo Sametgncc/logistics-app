@@ -10,6 +10,9 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      IMAGE_NAME: ghcr.io/sametgncc/logistics-backend:latest  
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -28,8 +31,8 @@ jobs:
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Build Docker Image
-        run: docker build -t ghcr.io/${{ github.repository }}/logistics-backend:latest .
+        run: docker build -t $IMAGE_NAME .
         working-directory: backend
 
       - name: Push Docker Image
-        run: docker push ghcr.io/${{ github.repository }}/logistics-backend:latest
+        run: docker push $IMAGE_NAME
