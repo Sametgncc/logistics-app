@@ -5,15 +5,13 @@ services:
     image: postgis/postgis:15-3.4
     container_name: logistics-postgres
     restart: always
-    environment:
-      POSTGRES_DB: logistics
-      POSTGRES_USER: admin122
-      POSTGRES_PASSWORD: nakli.122
+    env_file:
+      - .env
     ports:
       - "5433:5432"
-    
-    logistics-service:
-    build: ../services/logistics-service
+
+  logistics-service:
+    build: ../backend
     container_name: logistics-backend
     ports:
       - "8080:8080"
