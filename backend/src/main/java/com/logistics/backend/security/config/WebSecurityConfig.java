@@ -4,6 +4,7 @@ package com.logistics.backend.security.config;
 import com.logistics.backend.security.jwt.AuthTokenFilter;
 import com.logistics.backend.security.service.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,7 +29,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WebSecurityConfig {
 
-    private UserDetailsServiceImpl userDetailsService;
+    private  final UserDetailsServiceImpl userDetailsService;
 
 
     private static final String[] AUTH_WHITE_LIST = {
