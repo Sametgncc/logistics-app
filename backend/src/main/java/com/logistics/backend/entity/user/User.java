@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @Setter
@@ -37,7 +39,11 @@ public class User {
     @JoinColumn(name = "role_id", nullable = false)
     private RoleType role;
 
+    private boolean emailVerified = false;
 
+    private String verificationCode;
+
+    private LocalDateTime verificationCodeExpire;
 
 
 
