@@ -1,9 +1,9 @@
-package com.logistics.backend.service;
+package com.logistics.backend.service.user;
 
 import com.logistics.backend.dto.RegisterRequest;
 import com.logistics.backend.dto.VerifyRequest;
-import com.logistics.backend.entity.user.RoleType;
 import com.logistics.backend.entity.user.User;
+import com.logistics.backend.mapper.UserMapper;
 import com.logistics.backend.repository.user.RoleRepository;
 import com.logistics.backend.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +19,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final RoleRepository roleRepository;
+    private final UserMapper userMapper;
 
     public void register(RegisterRequest request) {
         if(userRepository.existsByEmail(request.getEmail())){
@@ -26,26 +27,11 @@ public class AuthService {
         }
         String code=generateCode();
 
-        RoleType role = roleRepository
-                .findByRole(request.getRole())
-                .orElseThrow(() -> new RuntimeException("Role bulunamadı"));
-
-        User user = new User();
-        user.setName(request.getName());
-        user.setUsername(request.getUsername());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setEmail(request.getEmail());
-        user.setPhone(request.getPhone());
-        user.setRole(role);
-
-        user.setVerificationCode(code);
-        user.setEmailVerified(false);
-        user.setVerificationCodeExpire(LocalDateTime.now().plusMinutes(5));
+        User user = userMapper.toUser(request, passwordEncoder.encode(request.getPassword()), code, LocalDateTime.now().plusMinutes(5));
 
         userRepository.save(user);
 
         emailService.sendVerificationMail(user.getEmail(),  code);
-
     }
 
     private String generateCode() {

@@ -2,7 +2,7 @@ package com.logistics.backend.controller.user;
 
 import com.logistics.backend.dto.RegisterRequest;
 import com.logistics.backend.dto.VerifyRequest;
-import com.logistics.backend.service.AuthService;
+import com.logistics.backend.service.user.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

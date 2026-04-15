@@ -24,8 +24,13 @@ public class RoleType {
     @Column(length = 20)
     private Role role;
 
-    String roleName;
+    @Column(nullable = false, unique = true, length = 50)
+    private String roleName;
 
-
-
+    public static RoleType valueOf(Role role) {
+        RoleType roleType = new RoleType();
+        roleType.setRole(role);
+        roleType.setRoleName(role.name());
+        return roleType;
+    }
 }

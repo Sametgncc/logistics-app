@@ -1,4 +1,4 @@
-package com.logistics.backend.service;
+package com.logistics.backend.service.user;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
