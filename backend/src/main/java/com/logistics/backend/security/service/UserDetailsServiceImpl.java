@@ -1,7 +1,5 @@
 package com.logistics.backend.security.service;
 
-
-
 import com.logistics.backend.entity.user.User;
 import com.logistics.backend.repository.user.UserRepository;
 import lombok.AllArgsConstructor;
@@ -17,18 +15,18 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 
-        User user = userRepository.findByUsernameEquals(username);
+        User user = userRepository.findByEmail(email).orElse(null);
 
         if(user != null){
             return new UserDetailsImpl(
                     user.getId(),
-                    user.getUsername(),
+                    user.getEmail(),
                     user.getName(),
                     user.getPassword()
             );
         }
-        throw new UsernameNotFoundException("User' " + username + " not found");
+        throw new UsernameNotFoundException("User' " + email + " not found");
     }
 }

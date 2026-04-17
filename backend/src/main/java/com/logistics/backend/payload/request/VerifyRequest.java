@@ -1,4 +1,4 @@
-package com.logistics.backend.dto;
+package com.logistics.backend.payload.request;
 
 import lombok.Data;
 

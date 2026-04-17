@@ -40,6 +40,9 @@ public class WebSecurityConfig {
             "/auth/login",
             "/auth/forgot-password",
             "/auth/reset-password",
+            "/auth/register",
+            "/auth/verify",
+            "/auth/set-password",
             "/user/register/**",
 
     };

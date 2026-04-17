@@ -18,13 +18,13 @@ public class JwtUtils {
     private static final Logger LOGGER =
             LoggerFactory.getLogger(JwtUtils.class);
 
-    @Value("${backendapi.app.jwtExpirationMs}")
+    @Value("${backendapi.app.jwtExpirationMs:86400000}") // Default 24h if not set
     private long jwtExpirationMs;
 
-    @Value("${backendapi.app.jwtSecret}")
+    @Value("${backendapi.app.jwtSecret:MySecretKeyWhichIsVerySecureAndLongEnoughToUseWithHS512Algorithm1234567890}") // Default secret
     private String jwtSecret;
 
-    private String generateToken(Authentication authentication) {
+    public String generateJwtToken(Authentication authentication) {
         UserDetailsImpl userDetails =
                 (UserDetailsImpl) authentication.getPrincipal();
 

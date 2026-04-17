@@ -27,19 +27,19 @@ public class User {
 
     private String name;
 
-    @NotBlank(message = "Username is not empty")
     private String username;
 
     private String password;
 
     @Email(message = "Geçerli bir mail adresi giriniz")
-    @NotBlank(message = "Mail adresi boş olamaz ")
+    @NotBlank(message = "Mail adresi boş olamaz")
+    @Column(unique = true, nullable = false)
     private String email;
 
     private String phone;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "role_id", nullable = false)
+    @JoinColumn(name = "role_id")
     private RoleType role;
 
     private boolean emailVerified = false;
@@ -48,9 +48,8 @@ public class User {
 
     private LocalDateTime verificationCodeExpire;
 
-
-
     @Column(nullable = false)
+    @Builder.Default
     private Boolean enabled = true;
 
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
@@ -64,9 +63,5 @@ public class User {
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
     @Builder.Default
     private List<Load> loads = new ArrayList<>();
-
-
-
-
 
 }
