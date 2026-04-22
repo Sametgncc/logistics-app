@@ -8,4 +8,5 @@ public class SuccessMessages {
     public static final String USER_FOUND = "Kullanıcı başarıyla bulundu.";
     public static final String USER_CREATED = "Kullanıcı başarıyla kaydedildi";
     public static final String USER_UPDATED = "Kullanıcı başarıyla güncellendi";
+    public static final String PROFILE_GET="Profil başarıyla getirildi";
 }

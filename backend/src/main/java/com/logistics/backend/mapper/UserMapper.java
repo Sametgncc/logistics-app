@@ -23,9 +23,11 @@ public class UserMapper {
     public UserResponse toUserResponse(User user) {
         return UserResponse.builder()
                 .userId(user.getId())
-                .email(user.getEmail())
                 .name(user.getName())
+                .username(user.getUsername())
+                .email(user.getEmail())
                 .phone(user.getPhone())
+                .address(user.getAddress())
                 .role(user.getRole())
                 .emailVerified(user.isEmailVerified())
                 .build();

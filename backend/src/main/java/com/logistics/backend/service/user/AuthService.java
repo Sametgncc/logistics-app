@@ -126,7 +126,7 @@ public class AuthService {
         String token = jwtUtils.generateJwtToken(authentication);
 
         UserResponse userResponse = userMapper.toUserResponse(savedUser);
-        userResponse.setToken(token); 
+        userResponse.setToken(token);
 
         return ResponseMessage.<UserResponse>builder()
                 .message(SuccessMessages.PASSWORD_SET_SUCCESS)

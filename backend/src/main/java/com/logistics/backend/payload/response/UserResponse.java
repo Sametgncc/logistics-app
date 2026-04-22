@@ -16,6 +16,8 @@ public class UserResponse {
     private Long userId;
     private String email;
     private String name;
+    private String username;
+    private String address;
     private String phone;
     private RoleType role;
     private boolean emailVerified;
