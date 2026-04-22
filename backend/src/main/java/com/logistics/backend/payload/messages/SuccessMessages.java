@@ -7,4 +7,5 @@ public class SuccessMessages {
     public static final String LOGIN_SUCCESS = "Giriş işlemi başarılı.";
     public static final String USER_FOUND = "Kullanıcı başarıyla bulundu.";
     public static final String USER_CREATED = "Kullanıcı başarıyla kaydedildi";
+    public static final String USER_UPDATED = "Kullanıcı başarıyla güncellendi";
 }

@@ -37,6 +37,8 @@ public class User {
     private String email;
 
     private String phone;
+    private String address;
+
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id")

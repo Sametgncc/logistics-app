@@ -1,5 +1,6 @@
 package com.logistics.backend.service.user;
 
+import com.logistics.backend.payload.request.CompleteProfileRequest;
 import com.logistics.backend.payload.request.LoginRequest;
 import com.logistics.backend.payload.request.RegisterRequest;
 import com.logistics.backend.payload.request.SetPasswordRequest;
@@ -125,7 +126,7 @@ public class AuthService {
         String token = jwtUtils.generateJwtToken(authentication);
 
         UserResponse userResponse = userMapper.toUserResponse(savedUser);
-        userResponse.setToken(token); // Assuming UserResponse has a setToken method
+        userResponse.setToken(token); 
 
         return ResponseMessage.<UserResponse>builder()
                 .message(SuccessMessages.PASSWORD_SET_SUCCESS)
@@ -152,6 +153,26 @@ public class AuthService {
                 .message(SuccessMessages.LOGIN_SUCCESS)
                 .httpStatus(HttpStatus.OK)
                 .object(userResponse)
+                .build();
+    }
+
+    public ResponseMessage<UserResponse> completeProfile(CompleteProfileRequest request, String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found."));
+
+        user.setName(request.getName());
+        if (request.getUsername() != null && !request.getUsername().isEmpty()) {
+            user.setUsername(request.getUsername());
+        }
+        user.setAddress(request.getAddress());
+        user.setPhone(request.getPhone());
+
+        User savedUser = userRepository.save(user);
+
+        return ResponseMessage.<UserResponse>builder()
+                .message(SuccessMessages.USER_UPDATED)
+                .httpStatus(HttpStatus.OK)
+                .object(userMapper.toUserResponse(savedUser))
                 .build();
     }
 }

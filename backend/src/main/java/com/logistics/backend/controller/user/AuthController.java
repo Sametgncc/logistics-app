@@ -1,5 +1,6 @@
 package com.logistics.backend.controller.user;
 
+import com.logistics.backend.payload.request.CompleteProfileRequest;
 import com.logistics.backend.payload.request.LoginRequest;
 import com.logistics.backend.payload.request.RegisterRequest;
 import com.logistics.backend.payload.request.SetPasswordRequest;
@@ -10,6 +11,8 @@ import com.logistics.backend.service.user.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,5 +42,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ResponseMessage<UserResponse>> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/complete-profile")
+    public ResponseEntity<ResponseMessage<UserResponse>> completeProfile(@Valid @RequestBody CompleteProfileRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(authService.completeProfile(request, userDetails.getUsername()));
     }
 }
