@@ -118,10 +118,19 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
 
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String token = jwtUtils.generateJwtToken(authentication);
+
+        UserResponse userResponse = userMapper.toUserResponse(savedUser);
+        userResponse.setToken(token); // Assuming UserResponse has a setToken method
+
         return ResponseMessage.<UserResponse>builder()
                 .message(SuccessMessages.PASSWORD_SET_SUCCESS)
                 .httpStatus(HttpStatus.OK)
-                .object(userMapper.toUserResponse(savedUser))
+                .object(userResponse)
                 .build();
     }
 

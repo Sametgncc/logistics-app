@@ -17,16 +17,16 @@ import java.util.*;
 public class UserDetailsImpl implements UserDetails {
 
     private Long id;
-    private String username;
+    private String email;
     private String name;
 
     @JsonIgnore
     private String password;
     private Collection<? extends GrantedAuthority> authorities;
 
-    public UserDetailsImpl(Long id , String username, String name ,String password, Role role) {
+    public UserDetailsImpl(Long id , String email, String name ,String password, Role role) {
         this.id = id;
-        this.username = username;
+        this.email = email;
         this.name = name;
         this.password= password;
         List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
@@ -34,9 +34,9 @@ public class UserDetailsImpl implements UserDetails {
         this.authorities = grantedAuthorities;
     }
 
-    public UserDetailsImpl(Long id, String username, String name, String password) {
+    public UserDetailsImpl(Long id, String email, String name, String password) {
         this.id = id;
-        this.username = username;
+        this.email = email;
         this.name = name;
         this.password = password;
 
@@ -59,7 +59,7 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public String getUsername() {
-        return username;
+        return email;
     }
 
     @Override
@@ -86,6 +86,6 @@ public class UserDetailsImpl implements UserDetails {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         UserDetailsImpl that = (UserDetailsImpl) o;
-        return Objects.equals(id, that.id) && Objects.equals(username, that.username);
+        return Objects.equals(id, that.id) && Objects.equals(email, that.email);
     }
 }

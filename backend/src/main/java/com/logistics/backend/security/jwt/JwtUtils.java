@@ -2,10 +2,13 @@ package com.logistics.backend.security.jwt;
 
 import com.logistics.backend.security.service.UserDetailsImpl;
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 
@@ -24,34 +27,41 @@ public class JwtUtils {
     @Value("${backendapi.app.jwtSecret:MySecretKeyWhichIsVerySecureAndLongEnoughToUseWithHS512Algorithm1234567890}") // Default secret
     private String jwtSecret;
 
+    private Key key;
+
+    @PostConstruct
+    public void init() {
+        this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    }
+
     public String generateJwtToken(Authentication authentication) {
         UserDetailsImpl userDetails =
                 (UserDetailsImpl) authentication.getPrincipal();
 
-        return buildToken(userDetails.getUsername(), userDetails.getId());
+        return buildToken(userDetails.getEmail(), userDetails.getId());
     }
 
-    public String generateTokenFromUsernameAndId(String username, Long userId){
-        return buildToken(username, userId);
+    public String generateTokenFromEmailAndId(String email, Long userId){
+        return buildToken(email, userId);
     }
 
-    private String buildToken(String username, Long userId) {
+    private String buildToken(String email, Long userId) {
 
         var claims = new HashMap<String, Object>();
         claims.put("userId", userId);
 
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(username)
+                .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(new Date().getTime() + jwtExpirationMs))
-                .signWith(SignatureAlgorithm.HS512, jwtSecret)
+                .signWith(key, SignatureAlgorithm.HS512)
                 .compact();
     }
 
     public boolean validateJwtToken(String jwtToken){
         try {
-            Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(jwtToken);
+            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(jwtToken);
             return true;
         } catch (ExpiredJwtException e) {
             LOGGER.error("Jwt token is expired : {}", e.getMessage());
@@ -67,7 +77,7 @@ public class JwtUtils {
         return  false;
     }
 
-    public String getUsernameFromJwtToken(String token){
+    public String getEmailFromJwtToken(String token){
         return getClaimsFromToken(token).getSubject();
     }
 
@@ -78,8 +88,9 @@ public class JwtUtils {
     }
 
     private Claims getClaimsFromToken(String token) {
-        return Jwts.parser()
-                .setSigningKey(jwtSecret)
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
