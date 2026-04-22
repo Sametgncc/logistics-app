@@ -1,5 +1,6 @@
 package com.logistics.backend.controller.user;
 
+import com.logistics.backend.payload.request.UpdateUserRequest;
 import com.logistics.backend.payload.response.ResponseMessage;
 import com.logistics.backend.payload.response.UserResponse;
 import com.logistics.backend.service.user.UserService;
@@ -8,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,5 +24,12 @@ public class UserController {
     @GetMapping("/profile")
     public ResponseEntity<ResponseMessage<UserResponse>> getUserProfile(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(userService.getUserProfile(userDetails.getUsername()));
+    }
+
+    @PatchMapping("/update")
+    public ResponseEntity<ResponseMessage<UserResponse>> updateUserProfile(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody UpdateUserRequest updateUserRequest) {
+        return ResponseEntity.ok(userService.updateUserProfile(userDetails.getUsername(), updateUserRequest));
     }
 }
