@@ -1,6 +1,5 @@
 package com.logistics.backend.entity.user;
 
-
 import com.logistics.backend.entity.enums.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -21,16 +20,6 @@ public class RoleType {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(length = 20, unique = true, nullable = false)
     private Role role;
-
-    @Column(nullable = false, unique = true, length = 50)
-    private String roleName;
-
-    public static RoleType valueOf(Role role) {
-        RoleType roleType = new RoleType();
-        roleType.setRole(role);
-        roleType.setRoleName(role.name());
-        return roleType;
-    }
 }

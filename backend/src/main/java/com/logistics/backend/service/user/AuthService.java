@@ -1,5 +1,7 @@
 package com.logistics.backend.service.user;
 
+import com.logistics.backend.entity.enums.Role;
+import com.logistics.backend.entity.user.RoleType;
 import com.logistics.backend.payload.request.CompleteProfileRequest;
 import com.logistics.backend.payload.request.LoginRequest;
 import com.logistics.backend.payload.request.RegisterRequest;
@@ -116,6 +118,10 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setVerificationCode(null);
         user.setVerificationCodeExpire(null);
+
+        RoleType customerRole = roleRepository.findByRole(Role.CUSTOMER)
+                .orElseThrow(() -> new RuntimeException("CUSTOMER rolü bulunamadı."));
+        user.setRole(customerRole);
 
         User savedUser = userRepository.save(user);
 

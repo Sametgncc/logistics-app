@@ -17,9 +17,9 @@ public class DataInitService {
     @PostConstruct
     public void init() {
         if (roleRepository.count() == 0) {
-            roleRepository.save(RoleType.valueOf(Role.ADMIN));
-            roleRepository.save(RoleType.valueOf(Role.CUSTOMER));
-            roleRepository.save(RoleType.valueOf(Role.DRIVER));
+            roleRepository.save(RoleType.builder().role(Role.ADMIN).build());
+            roleRepository.save(RoleType.builder().role(Role.CUSTOMER).build());
+            roleRepository.save(RoleType.builder().role(Role.DRIVER).build());
         }
     }
 }
