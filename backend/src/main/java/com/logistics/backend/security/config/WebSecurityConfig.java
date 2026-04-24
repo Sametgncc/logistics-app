@@ -44,7 +44,6 @@ public class WebSecurityConfig {
             "/auth/verify",
             "/auth/set-password",
             "/user/register/**",
-
     };
 
     @Bean

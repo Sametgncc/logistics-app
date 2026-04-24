@@ -1,49 +1,57 @@
 package com.logistics.backend.controller.business;
 
-import com.logistics.backend.entity.business.RoutePlan;
+
+import com.logistics.backend.payload.request.CreateRoutePlanRequest;
+import com.logistics.backend.payload.request.UpdateRoutePlanRequest;
+import com.logistics.backend.payload.response.RoutePlanResponse;
 import com.logistics.backend.service.business.RoutePlanService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/route-plans")
+@RequestMapping("/route-plans")
+@RequiredArgsConstructor
 public class RoutePlanController {
 
     private final RoutePlanService routePlanService;
 
-    @Autowired
-    public RoutePlanController(RoutePlanService routePlanService) {
-        this.routePlanService = routePlanService;
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public RoutePlanResponse createRoutePlan(@Valid @RequestBody CreateRoutePlanRequest request) {
+        return routePlanService.createRoutePlan(request);
     }
 
-    @GetMapping
-    public ResponseEntity<List<RoutePlan>> getAllRoutePlans() {
-        return ResponseEntity.ok(routePlanService.getAllRoutePlans());
+    @GetMapping("/my")
+    public List<RoutePlanResponse> getMyRoutePlans(@RequestParam Long driverId) {
+        return routePlanService.getMyRoutePlans(driverId);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<RoutePlan> getRoutePlanById(@PathVariable Long id) {
-        return routePlanService.getRoutePlanById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public RoutePlanResponse getRoutePlanById(@PathVariable Long id) {
+        return routePlanService.getRoutePlanById(id);
     }
 
-    @PostMapping
-    public ResponseEntity<RoutePlan> createRoutePlan(@RequestBody RoutePlan routePlan) {
-        return ResponseEntity.ok(routePlanService.createRoutePlan(routePlan));
+    @GetMapping
+    public List<RoutePlanResponse> getOpenRoutePlans(@RequestParam(required = false) String status) {
+        if (status == null || "OPEN".equalsIgnoreCase(status)) {
+            return routePlanService.getOpenRoutePlans();
+        }
+
+        return routePlanService.getOpenRoutePlans();
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<RoutePlan> updateRoutePlan(@PathVariable Long id, @RequestBody RoutePlan routePlan) {
-        return ResponseEntity.ok(routePlanService.updateRoutePlan(id, routePlan));
+    public RoutePlanResponse updateRoutePlan(@PathVariable Long id,
+                                             @Valid @RequestBody UpdateRoutePlanRequest request) {
+        return routePlanService.updateRoutePlan(id, request);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRoutePlan(@PathVariable Long id) {
-        routePlanService.deleteRoutePlan(id);
-        return ResponseEntity.noContent().build();
+    @PatchMapping("/{id}/cancel")
+    public RoutePlanResponse cancelRoutePlan(@PathVariable Long id) {
+        return routePlanService.cancelRoutePlan(id);
     }
 }
