@@ -10,9 +10,11 @@ import com.logistics.backend.exception.BadRequestException;
 import com.logistics.backend.exception.ResourceNotFoundException;
 import com.logistics.backend.mapper.LoadMatchMapper;
 import com.logistics.backend.payload.response.LoadMatchResponse;
+import com.logistics.backend.payload.response.MatchDebugResponse;
 import com.logistics.backend.repository.business.LoadMatchRepository;
 import com.logistics.backend.repository.business.LoadRepository;
 import com.logistics.backend.repository.business.RoutePlanRepository;
+import com.logistics.backend.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +25,11 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class LoadMatchingService {
+
+
+    private static final double MAX_PICKUP_DISTANCE_FROM_ROUTE_ORIGIN_KM = 600.0;
+    private static final double MAX_DELIVERY_DISTANCE_FROM_ROUTE_DESTINATION_KM = 80.0;
+    private static final double MAX_TOTAL_DEVIATION_KM = 700.0;
 
     private final LoadRepository loadRepository;
     private final RoutePlanRepository routePlanRepository;
@@ -96,13 +103,20 @@ public class LoadMatchingService {
                 .orElseGet(() -> {
                     BigDecimal score = calculateMatchScore(load, routePlan);
 
+                    double directDistance = calculateDirectRouteDistance(routePlan);
+                    double routeWithLoadDistance = calculateRouteWithLoadDistance(routePlan, load);
+                    double deviation = calculateDeviationKm(routePlan, load);
+
                     LoadMatch match = LoadMatch.builder()
                             .load(load)
                             .routePlan(routePlan)
                             .status(MatchStatus.PENDING)
                             .matchScore(score)
-                            .note("Suitable route plan found for this load")
+                            .note(buildMatchNote(load, routePlan))
                             .createdAt(LocalDateTime.now())
+                            .directRouteDistanceKm(BigDecimal.valueOf(directDistance))
+                            .routeWithLoadDistanceKm(BigDecimal.valueOf(routeWithLoadDistance))
+                            .deviationKm(BigDecimal.valueOf(deviation))
                             .build();
 
                     return loadMatchRepository.save(match);
@@ -113,7 +127,8 @@ public class LoadMatchingService {
         return isRoutePlanOpen(routePlan)
                 && hasEnoughCapacity(routePlan, load)
                 && hasCityCompatibility(routePlan, load)
-                && hasTimeCompatibility(routePlan, load);
+                && hasTimeCompatibility(routePlan, load)
+                && hasAcceptableDeviation(routePlan, load);
     }
 
     private boolean isRoutePlanOpen(RoutePlan routePlan) {
@@ -157,16 +172,29 @@ public class LoadMatchingService {
     private BigDecimal calculateMatchScore(Load load, RoutePlan routePlan) {
         int score = 0;
 
-        if (routePlan.getOriginCity().equalsIgnoreCase(load.getPickupCity())) {
-            score += 40;
+        if (routePlan.getDestinationCity().equalsIgnoreCase(load.getDeliveryCity())) {
+            score += 30;
         }
 
-        if (routePlan.getDestinationCity().equalsIgnoreCase(load.getDeliveryCity())) {
-            score += 40;
+        if (routePlan.getOriginCity().equalsIgnoreCase(load.getPickupCity())) {
+            score += 25;
         }
 
         if (hasEnoughCapacity(routePlan, load)) {
             score += 20;
+        }
+
+        double deviationKm = calculateDeviationKm(routePlan, load);
+        if (deviationKm <= 50) {
+            score += 25;
+        } else if (deviationKm <= 150) {
+            score += 20;
+        } else if (deviationKm <= 300) {
+            score += 15;
+        } else if (deviationKm <= 500) {
+            score += 10;
+        } else {
+            score += 5;
         }
 
         return BigDecimal.valueOf(score);
@@ -176,5 +204,171 @@ public class LoadMatchingService {
         if (load.getStatus() != LoadStatus.OPEN) {
             throw new BadRequestException("Only OPEN loads can be matched");
         }
+    }
+
+
+
+
+    private String buildMatchNote(Load load, RoutePlan routePlan) {
+        double directDistance = calculateDirectRouteDistance(routePlan);
+        double routeWithLoadDistance = calculateRouteWithLoadDistance(routePlan, load);
+        double deviation = calculateDeviationKm(routePlan, load);
+
+        return String.format(
+                "Direct route: %.2f km, route with load: %.2f km, deviation: %.2f km",
+                directDistance,
+                routeWithLoadDistance,
+                deviation
+        );
+    }
+
+
+
+
+    private boolean isPickupNearRoute(RoutePlan routePlan, Load load) {
+        double distance = GeoUtils.calculateDistance(
+                routePlan.getOriginLat().doubleValue(),
+                routePlan.getOriginLng().doubleValue(),
+                load.getPickupLat().doubleValue(),
+                load.getPickupLng().doubleValue()
+        );
+
+        return distance <= 50; // 50 km tolerans
+    }
+
+    private double calculateDistanceKm(
+            BigDecimal lat1,
+            BigDecimal lng1,
+            BigDecimal lat2,
+            BigDecimal lng2
+    ) {
+        return GeoUtils.calculateDistance(
+                lat1.doubleValue(),
+                lng1.doubleValue(),
+                lat2.doubleValue(),
+                lng2.doubleValue()
+        );
+    }
+
+    private double calculateDirectRouteDistance(RoutePlan routePlan) {
+        return calculateDistanceKm(
+                routePlan.getOriginLat(),
+                routePlan.getOriginLng(),
+                routePlan.getDestinationLat(),
+                routePlan.getDestinationLng()
+        );
+    }
+
+    private double calculateRouteWithLoadDistance(RoutePlan routePlan, Load load) {
+        double originToPickup = calculateDistanceKm(
+                routePlan.getOriginLat(),
+                routePlan.getOriginLng(),
+                load.getPickupLat(),
+                load.getPickupLng()
+        );
+
+        double pickupToDelivery = calculateDistanceKm(
+                load.getPickupLat(),
+                load.getPickupLng(),
+                load.getDeliveryLat(),
+                load.getDeliveryLng()
+        );
+
+        double deliveryToDestination = calculateDistanceKm(
+                load.getDeliveryLat(),
+                load.getDeliveryLng(),
+                routePlan.getDestinationLat(),
+                routePlan.getDestinationLng()
+        );
+
+        return originToPickup + pickupToDelivery + deliveryToDestination;
+    }
+
+    private double calculateDeviationKm(RoutePlan routePlan, Load load) {
+        double directRouteDistance = calculateDirectRouteDistance(routePlan);
+        double routeWithLoadDistance = calculateRouteWithLoadDistance(routePlan, load);
+
+        return routeWithLoadDistance - directRouteDistance;
+    }
+
+    private boolean hasAcceptableDeviation(RoutePlan routePlan, Load load) {
+        double deviationKm = calculateDeviationKm(routePlan, load);
+        return deviationKm <= MAX_TOTAL_DEVIATION_KM;
+    }
+
+
+
+
+    private MatchDebugResponse buildDebugResponse(Load load, RoutePlan routePlan) {
+        boolean routePlanOpen = isRoutePlanOpen(routePlan);
+        boolean enoughCapacity = hasEnoughCapacity(routePlan, load);
+        boolean cityCompatible = hasCityCompatibility(routePlan, load);
+        boolean timeCompatible = hasTimeCompatibility(routePlan, load);
+        boolean acceptableDeviation = hasAcceptableDeviation(routePlan, load);
+
+        double directDistance = calculateDirectRouteDistance(routePlan);
+        double routeWithLoadDistance = calculateRouteWithLoadDistance(routePlan, load);
+        double deviation = calculateDeviationKm(routePlan, load);
+
+        boolean suitable = routePlanOpen
+                && enoughCapacity
+                && cityCompatible
+                && timeCompatible
+                && acceptableDeviation;
+
+        return MatchDebugResponse.builder()
+                .loadId(load.getId())
+                .routePlanId(routePlan.getId())
+                .routePlanOpen(routePlanOpen)
+                .enoughCapacity(enoughCapacity)
+                .cityCompatible(cityCompatible)
+                .timeCompatible(timeCompatible)
+                .acceptableDeviation(acceptableDeviation)
+                .directRouteDistanceKm(directDistance)
+                .routeWithLoadDistanceKm(routeWithLoadDistance)
+                .deviationKm(deviation)
+                .suitable(suitable)
+                .reason(buildDebugReason(routePlanOpen, enoughCapacity, cityCompatible, timeCompatible, acceptableDeviation))
+                .build();
+    }
+
+    private String buildDebugReason(
+            boolean routePlanOpen,
+            boolean enoughCapacity,
+            boolean cityCompatible,
+            boolean timeCompatible,
+            boolean acceptableDeviation
+    ) {
+        if (!routePlanOpen) {
+            return "Route plan is not OPEN";
+        }
+
+        if (!enoughCapacity) {
+            return "Route plan capacity is not enough";
+        }
+
+        if (!cityCompatible) {
+            return "City compatibility failed";
+        }
+
+        if (!timeCompatible) {
+            return "Time compatibility failed";
+        }
+
+        if (!acceptableDeviation) {
+            return "Route deviation is too high";
+        }
+
+        return "Route plan is suitable";
+    }
+    public List<MatchDebugResponse> debugSuitableRoutePlansForLoad(Long loadId) {
+        Load load = loadRepository.findById(loadId)
+                .orElseThrow(() -> new ResourceNotFoundException("Load not found with id: " + loadId));
+
+        List<RoutePlan> routePlans = routePlanRepository.findAll();
+
+        return routePlans.stream()
+                .map(routePlan -> buildDebugResponse(load, routePlan))
+                .toList();
     }
 }

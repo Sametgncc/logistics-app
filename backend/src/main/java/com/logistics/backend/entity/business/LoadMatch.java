@@ -28,12 +28,12 @@ public class LoadMatch {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Hangi yük ilanı?
+    // hangi yük ilanı?
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "load_id", nullable = false)
     private Load load;
 
-    // Hangi şoför rotası?
+    // hangi şoför rotası?
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "route_plan_id", nullable = false)
     private RoutePlan routePlan;
@@ -42,7 +42,7 @@ public class LoadMatch {
     @Column(nullable = false, length = 30)
     private MatchStatus status;
 
-    // Basit skor: kapasite, rota, zaman uygunluğu gibi şeylerden üretilecek
+    // kapasite, rota, zaman uygunluğu gibi şeylerden üretilecek
     @Column(nullable = false, precision = 5, scale = 2)
     private BigDecimal matchScore;
 
@@ -51,4 +51,13 @@ public class LoadMatch {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal directRouteDistanceKm;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal routeWithLoadDistanceKm;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal deviationKm;
 }

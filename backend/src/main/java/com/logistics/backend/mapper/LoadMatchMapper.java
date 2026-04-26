@@ -39,6 +39,16 @@ public class LoadMatchMapper {
                 .status(loadMatch.getStatus())
                 .note(loadMatch.getNote())
                 .createdAt(loadMatch.getCreatedAt())
+
+                .directRouteDistanceKm(loadMatch.getDirectRouteDistanceKm() != null
+                        ? loadMatch.getDirectRouteDistanceKm().doubleValue()
+                        : null)
+                .routeWithLoadDistanceKm(loadMatch.getRouteWithLoadDistanceKm() != null
+                        ? loadMatch.getRouteWithLoadDistanceKm().doubleValue()
+                        : null)
+                .deviationKm(loadMatch.getDeviationKm() != null
+                        ? loadMatch.getDeviationKm().doubleValue()
+                        : null)
                 .build();
     }
 }

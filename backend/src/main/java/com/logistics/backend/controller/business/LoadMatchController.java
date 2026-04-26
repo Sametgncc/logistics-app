@@ -1,8 +1,10 @@
 package com.logistics.backend.controller.business;
 
 import com.logistics.backend.payload.response.LoadMatchResponse;
+import com.logistics.backend.payload.response.MatchDebugResponse;
 import com.logistics.backend.service.business.LoadMatchingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,6 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/load-matches")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class LoadMatchController {
 
     private final LoadMatchingService loadMatchingService;
@@ -37,5 +40,10 @@ public class LoadMatchController {
     @PatchMapping("/{matchId}/reject")
     public LoadMatchResponse rejectMatch(@PathVariable Long matchId) {
         return loadMatchingService.rejectMatch(matchId);
+    }
+
+    @GetMapping("/loads/{loadId}/debug")
+    public List<MatchDebugResponse> debugSuitableRoutePlansForLoad(@PathVariable Long loadId) {
+        return loadMatchingService.debugSuitableRoutePlansForLoad(loadId);
     }
 }

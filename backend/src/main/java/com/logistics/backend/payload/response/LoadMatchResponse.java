@@ -32,4 +32,10 @@ public class LoadMatchResponse {
     private MatchStatus status;
     private String note;
     private LocalDateTime createdAt;
+
+
+    private Double directRouteDistanceKm;
+    private Double routeWithLoadDistanceKm;
+    private Double deviationKm;
+
 }
