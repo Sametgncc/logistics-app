@@ -24,13 +24,15 @@ public class UserDetailsImpl implements UserDetails {
     private String password;
     private Collection<? extends GrantedAuthority> authorities;
 
-    public UserDetailsImpl(Long id , String email, String name ,String password, Role role) {
+    public UserDetailsImpl(Long id, String email, String name, String password, Role role) {
         this.id = id;
         this.email = email;
         this.name = name;
-        this.password= password;
+        this.password = password;
+
         List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
         grantedAuthorities.add(new SimpleGrantedAuthority(role.name()));
+
         this.authorities = grantedAuthorities;
     }
 
