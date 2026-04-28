@@ -1,13 +1,10 @@
 package com.logistics.backend.controller.user;
 
-import com.logistics.backend.payload.request.CompleteProfileRequest;
-import com.logistics.backend.payload.request.LoginRequest;
-import com.logistics.backend.payload.request.RegisterRequest;
-import com.logistics.backend.payload.request.SetPasswordRequest;
-import com.logistics.backend.payload.request.VerifyRequest;
+import com.logistics.backend.payload.request.*;
 import com.logistics.backend.payload.response.ResponseMessage;
 import com.logistics.backend.payload.response.UserResponse;
 import com.logistics.backend.service.user.AuthService;
+import com.logistics.backend.service.user.GoogleAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +20,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 public class AuthController {
     private final AuthService authService;
+    private final GoogleAuthService googleAuthService;
+
+    @PostMapping("/google")
+    public ResponseEntity<String> googleLogin(@RequestBody TokenRequest request) {
+        try {
+            String systemJwt = googleAuthService.authenticateWithGoogle(request.getToken());
+            return ResponseEntity.ok(systemJwt);
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body("Kimlik doğrulama başarısız!");
+        }
+    }
 
     @PostMapping("/register")
     public ResponseEntity<ResponseMessage<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
