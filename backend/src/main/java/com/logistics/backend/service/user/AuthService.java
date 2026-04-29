@@ -167,6 +167,7 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found."));
 
         user.setName(request.getName());
+        user.setLastName(request.getLastName());
         if (request.getUsername() != null && !request.getUsername().isEmpty()) {
             user.setUsername(request.getUsername());
         }

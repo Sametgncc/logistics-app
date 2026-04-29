@@ -39,6 +39,9 @@ public class UserService {
         if (updateUserRequest.getName() != null && !updateUserRequest.getName().isEmpty()) {
             user.setName(updateUserRequest.getName());
         }
+        if (updateUserRequest.getLastName() != null && !updateUserRequest.getLastName().isEmpty()) {
+            user.setLastName(updateUserRequest.getLastName());
+        }
         if (updateUserRequest.getUsername() != null && !updateUserRequest.getUsername().isEmpty()) {
             user.setUsername(updateUserRequest.getUsername());
         }

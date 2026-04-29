@@ -24,6 +24,7 @@ public class UserMapper {
         return UserResponse.builder()
                 .userId(user.getId())
                 .name(user.getName())
+                .lastName(user.getLastName())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .phone(user.getPhone())
