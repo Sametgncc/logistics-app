@@ -33,7 +33,4 @@ public class RoutePlanResponse {
 
     private RoutePlanStatus status;
     private String notes;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }

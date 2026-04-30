@@ -21,7 +21,7 @@ public class RoutePlanController {
     private final RoutePlanService routePlanService;
 
 
-    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER')")
+    @PreAuthorize("hasAnyAuthority('DRIVER')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RoutePlanResponse createRoutePlan(@Valid @RequestBody CreateRoutePlanRequest request) {

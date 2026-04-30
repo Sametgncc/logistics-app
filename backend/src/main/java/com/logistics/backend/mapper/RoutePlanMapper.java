@@ -26,8 +26,6 @@ public class RoutePlanMapper {
                 .availableCapacityVolumeM3(routePlan.getAvailableCapacityVolumeM3())
                 .status(routePlan.getStatus())
                 .notes(routePlan.getNotes())
-                .createdAt(routePlan.getCreatedAt())
-                .updatedAt(routePlan.getUpdatedAt())
                 .build();
     }
 }

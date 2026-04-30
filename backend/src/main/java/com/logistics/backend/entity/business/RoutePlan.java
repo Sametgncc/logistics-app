@@ -76,12 +76,4 @@ public class RoutePlan {
     @OneToMany(mappedBy = "routePlan", cascade = CascadeType.ALL)
     @Builder.Default
     private List<LoadMatch> matches = new ArrayList<>();
-
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
-
-
 }
