@@ -23,4 +23,6 @@ public class UserResponse {
     private RoleType role;
     private boolean emailVerified;
     private String token;
+
+    private Boolean driverApproved;
 }

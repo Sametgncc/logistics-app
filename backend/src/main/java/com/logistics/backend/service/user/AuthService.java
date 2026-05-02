@@ -57,6 +57,9 @@ public class AuthService {
             savedUser = userRepository.save(existingUser);
         } else {
             User newUser = userMapper.toUser(request, code, LocalDateTime.now().plusMinutes(5));
+            RoleType driverRole = roleRepository.findByRole(Role.DRIVER)
+                    .orElseThrow(() -> new RuntimeException("DRIVER rolü bulunamadı."));
+            newUser.setRole(driverRole);
             savedUser = userRepository.save(newUser);
         }
 
@@ -119,9 +122,12 @@ public class AuthService {
         user.setVerificationCode(null);
         user.setVerificationCodeExpire(null);
 
-        RoleType customerRole = roleRepository.findByRole(Role.CUSTOMER)
+
+        if (user.getRole() == null) {
+             RoleType customerRole = roleRepository.findByRole(Role.CUSTOMER)
                 .orElseThrow(() -> new RuntimeException("CUSTOMER rolü bulunamadı."));
-        user.setRole(customerRole);
+             user.setRole(customerRole);
+        }
 
         User savedUser = userRepository.save(user);
 

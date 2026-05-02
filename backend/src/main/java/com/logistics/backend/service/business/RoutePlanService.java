@@ -147,6 +147,10 @@ public class RoutePlanService {
         if (Boolean.FALSE.equals(driver.getEnabled())) {
             throw new BadRequestException("Driver account is disabled");
         }
+
+        if (Boolean.FALSE.equals(driver.getDriverApproved())) {
+            throw new BadRequestException("Driver is not approved yet");
+        }
     }
 
     private void validateVehicleOwnership(User driver, Vehicle vehicle) {

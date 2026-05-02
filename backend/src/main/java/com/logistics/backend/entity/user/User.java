@@ -67,4 +67,7 @@ public class User {
     @Builder.Default
     private List<Load> loads = new ArrayList<>();
 
+    @Builder.Default
+    private Boolean driverApproved = false;
+
 }
