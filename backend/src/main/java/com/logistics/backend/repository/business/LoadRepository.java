@@ -12,6 +12,8 @@ public interface LoadRepository extends JpaRepository<Load, Long> {
 
     List<Load> findByStatus(LoadStatus status);
 
+    long countByStatus(LoadStatus status);
+
     List<Load> findByPickupCityIgnoreCaseAndDeliveryCityIgnoreCase(
             String pickupCity,
             String deliveryCity

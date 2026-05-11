@@ -19,6 +19,8 @@ public interface TransportOfferRepository extends JpaRepository<TransportOffer, 
 
     List<TransportOffer> findByStatus(OfferStatus status);
 
+    long countByStatus(OfferStatus status);
+
     boolean existsByLoadIdAndRoutePlanIdAndStatus(
             Long loadId,
             Long routePlanId,

@@ -12,5 +12,7 @@ public interface RoutePlanRepository extends JpaRepository<RoutePlan, Long> {
 
     List<RoutePlan> findByStatus(RoutePlanStatus status);
 
+    long countByStatus(RoutePlanStatus status);
+
     List<RoutePlan> findByDriverIdAndStatus(Long driverId, RoutePlanStatus status);
 }
