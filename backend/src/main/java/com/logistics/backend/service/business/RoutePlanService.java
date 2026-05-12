@@ -140,10 +140,6 @@ public class RoutePlanService {
             throw new BadRequestException("User role information is missing");
         }
 
-        if (driver.getRole().getRole() != Role.DRIVER) {
-            throw new BadRequestException("Only DRIVER users can create route plans");
-        }
-
         if (Boolean.FALSE.equals(driver.getEnabled())) {
             throw new BadRequestException("Driver account is disabled");
         }

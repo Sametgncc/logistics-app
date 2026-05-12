@@ -17,17 +17,19 @@ public class UserDetailsImpl implements UserDetails {
     private Long id;
     private String email;
     private String name;
+    private Boolean driverApproved;
 
     @JsonIgnore
     private String password;
 
     private Collection<? extends GrantedAuthority> authorities;
 
-    public UserDetailsImpl(Long id, String email, String name, String password, Role role) {
+    public UserDetailsImpl(Long id, String email, String name, String password, Role role, Boolean driverApproved) {
         this.id = id;
         this.email = email;
         this.name = name;
         this.password = password;
+        this.driverApproved = driverApproved;
 
         this.authorities = List.of(
                 new SimpleGrantedAuthority(role.name()),           // DRIVER

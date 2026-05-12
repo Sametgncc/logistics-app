@@ -19,7 +19,7 @@ public class DriverDocumentController {
 
     private final DriverDocumentService driverDocumentService;
 
-    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER')")
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'DRIVER', 'ROLE_DRIVER')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public DriverDocumentResponse uploadDocument(
@@ -28,7 +28,7 @@ public class DriverDocumentController {
         return driverDocumentService.uploadDocument(request);
     }
 
-    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER', 'ADMIN', 'ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER', 'CUSTOMER', 'ROLE_CUSTOMER', 'ADMIN', 'ROLE_ADMIN')")
     @GetMapping("/driver/{driverId}")
     public List<DriverDocumentResponse> getDocumentsByDriverId(@PathVariable Long driverId) {
         return driverDocumentService.getDocumentsByDriverId(driverId);

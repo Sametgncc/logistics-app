@@ -117,8 +117,8 @@ public class VehicleService {
             throw new BadRequestException("Owner role information is missing");
         }
 
-        if (owner.getRole().getRole() != Role.DRIVER) {
-            throw new BadRequestException("Only DRIVER users can add vehicles");
+        if (Boolean.FALSE.equals(owner.getDriverApproved())) {
+            throw new BadRequestException("Driver is not approved to add a vehicle");
         }
 
         if (Boolean.FALSE.equals(owner.getEnabled())) {
