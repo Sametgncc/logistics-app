@@ -45,8 +45,8 @@ public class DriverApprovalService {
         User driver = userRepository.findById(driverId)
                 .orElseThrow(() -> new ResourceNotFoundException("Driver not found with id: " + driverId));
 
-        if (driver.getRole() == null || driver.getRole().getRole() != Role.DRIVER) {
-            throw new BadRequestException("User is not a DRIVER");
+        if (driver.getRole() == null) {
+            throw new BadRequestException("User haven't any role");
         }
 
         return driver;

@@ -100,14 +100,6 @@ public class DriverDocumentService {
     }
 
     private void validateDriver(User driver) {
-        if (driver.getRole() == null || driver.getRole().getRole() == null) {
-            throw new BadRequestException("Driver role information is missing");
-        }
-
-        if (driver.getRole().getRole() != Role.DRIVER) {
-            throw new BadRequestException("Only DRIVER users can upload documents");
-        }
-
         if (Boolean.FALSE.equals(driver.getEnabled())) {
             throw new BadRequestException("Driver account is disabled");
         }

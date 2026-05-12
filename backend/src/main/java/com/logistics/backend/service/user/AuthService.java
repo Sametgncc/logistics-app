@@ -57,9 +57,9 @@ public class AuthService {
             savedUser = userRepository.save(existingUser);
         } else {
             User newUser = userMapper.toUser(request, code, LocalDateTime.now().plusMinutes(5));
-            RoleType driverRole = roleRepository.findByRole(Role.DRIVER)
+            /*RoleType driverRole = roleRepository.findByRole(Role.DRIVER)
                     .orElseThrow(() -> new RuntimeException("DRIVER rolü bulunamadı."));
-            newUser.setRole(driverRole);
+            newUser.setRole(driverRole);*/
             savedUser = userRepository.save(newUser);
         }
 
