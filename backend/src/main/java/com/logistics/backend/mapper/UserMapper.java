@@ -31,6 +31,7 @@ public class UserMapper {
                 .address(user.getAddress())
                 .role(user.getRole())
                 .emailVerified(user.isEmailVerified())
+                .enabled(user.getEnabled())
                 .driverApproved(user.getDriverApproved())
                 .build();
     }

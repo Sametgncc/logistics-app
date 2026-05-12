@@ -22,6 +22,7 @@ public class UserResponse {
     private String phone;
     private RoleType role;
     private boolean emailVerified;
+    private Boolean enabled;
     private String token;
 
     private Boolean driverApproved;

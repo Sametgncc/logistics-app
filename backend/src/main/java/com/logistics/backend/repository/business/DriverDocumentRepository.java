@@ -14,6 +14,8 @@ public interface DriverDocumentRepository extends JpaRepository<DriverDocument, 
 
     List<DriverDocument> findByStatus(DriverDocumentStatus status);
 
+    long countByStatus(DriverDocumentStatus status);
+
     Optional<DriverDocument> findByDriverIdAndDocumentType(
             Long driverId,
             DriverDocumentType documentType
