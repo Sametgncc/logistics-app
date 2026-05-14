@@ -22,7 +22,11 @@ public class LoadMatchMapper {
 
                 .loadId(load.getId())
                 .pickupCity(load.getPickupCity())
+                .pickupLat(load.getPickupLat())
+                .pickupLng(load.getPickupLng())
                 .deliveryCity(load.getDeliveryCity())
+                .deliveryLat(load.getDeliveryLat())
+                .deliveryLng(load.getDeliveryLng())
                 .weightKg(load.getWeightKg())
                 .volumeM3(load.getVolumeM3())
 
