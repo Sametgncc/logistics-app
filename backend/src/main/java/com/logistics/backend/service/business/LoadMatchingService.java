@@ -5,6 +5,7 @@ import com.logistics.backend.entity.business.LoadMatch;
 import com.logistics.backend.entity.business.RoutePlan;
 import com.logistics.backend.entity.enums.LoadStatus;
 import com.logistics.backend.entity.enums.MatchStatus;
+import com.logistics.backend.entity.enums.NotificationType;
 import com.logistics.backend.entity.enums.RoutePlanStatus;
 import com.logistics.backend.exception.BadRequestException;
 import com.logistics.backend.exception.ResourceNotFoundException;
@@ -14,6 +15,7 @@ import com.logistics.backend.payload.response.MatchDebugResponse;
 import com.logistics.backend.repository.business.LoadMatchRepository;
 import com.logistics.backend.repository.business.LoadRepository;
 import com.logistics.backend.repository.business.RoutePlanRepository;
+import com.logistics.backend.service.user.NotificationService;
 import com.logistics.backend.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,7 @@ public class LoadMatchingService {
     private final RoutePlanRepository routePlanRepository;
     private final LoadMatchRepository loadMatchRepository;
     private final LoadMatchMapper loadMatchMapper;
+    private final NotificationService notificationService;
 
     public List<LoadMatchResponse> findSuitableRoutePlansForLoad(Long loadId) {
         Load load = loadRepository.findById(loadId)
@@ -132,7 +135,9 @@ public class LoadMatchingService {
         return loadMatchRepository.findByLoadIdAndRoutePlanId(load.getId(), routePlan.getId())
                 .orElseGet(() -> {
                     LoadMatch match = buildMatch(load, routePlan);
-                    return loadMatchRepository.save(match);
+                    LoadMatch savedMatch = loadMatchRepository.save(match);
+                    notifyMatchCreated(savedMatch);
+                    return savedMatch;
                 });
     }
 
@@ -414,6 +419,27 @@ public class LoadMatchingService {
 
         return "Route plan is suitable";
     }
+
+    private void notifyMatchCreated(LoadMatch match) {
+        notificationService.createNotification(
+                match.getLoad().getCustomer().getId(),
+                NotificationType.LOAD_MATCH_CREATED,
+                "New route match",
+                "A suitable route was found for your load.",
+                "LOAD_MATCH",
+                match.getId()
+        );
+
+        notificationService.createNotification(
+                match.getRoutePlan().getDriver().getId(),
+                NotificationType.LOAD_MATCH_CREATED,
+                "New suitable load",
+                "A suitable load was found for your route plan.",
+                "LOAD_MATCH",
+                match.getId()
+        );
+    }
+
     public List<MatchDebugResponse> debugSuitableRoutePlansForLoad(Long loadId) {
         Load load = loadRepository.findById(loadId)
                 .orElseThrow(() -> new ResourceNotFoundException("Load not found with id: " + loadId));

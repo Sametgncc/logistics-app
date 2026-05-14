@@ -4,6 +4,7 @@ import com.logistics.backend.entity.business.Load;
 import com.logistics.backend.entity.business.RoutePlan;
 import com.logistics.backend.entity.business.TransportOffer;
 import com.logistics.backend.entity.enums.LoadStatus;
+import com.logistics.backend.entity.enums.NotificationType;
 import com.logistics.backend.entity.enums.OfferDirection;
 import com.logistics.backend.entity.enums.OfferStatus;
 import com.logistics.backend.entity.enums.Role;
@@ -18,6 +19,7 @@ import com.logistics.backend.repository.business.LoadRepository;
 import com.logistics.backend.repository.business.RoutePlanRepository;
 import com.logistics.backend.repository.business.TransportOfferRepository;
 import com.logistics.backend.repository.user.UserRepository;
+import com.logistics.backend.service.user.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +35,7 @@ public class TransportOfferService {
     private final RoutePlanRepository routePlanRepository;
     private final UserRepository userRepository;
     private final TransportOfferMapper transportOfferMapper;
+    private final NotificationService notificationService;
 
     public TransportOfferResponse createOffer(CreateTransportOfferRequest request, Long offeredById) {
         Load load = loadRepository.findById(request.getLoadId())
@@ -61,7 +64,10 @@ public class TransportOfferService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return transportOfferMapper.toResponse(transportOfferRepository.save(offer));
+        TransportOffer savedOffer = transportOfferRepository.save(offer);
+        notifyOfferRecipient(savedOffer);
+
+        return transportOfferMapper.toResponse(savedOffer);
     }
 
     public List<TransportOfferResponse> getOffersByLoadId(Long loadId) {
@@ -179,7 +185,10 @@ public class TransportOfferService {
                 offer.getId()
         );
 
-        return transportOfferMapper.toResponse(transportOfferRepository.save(offer));
+        TransportOffer savedOffer = transportOfferRepository.save(offer);
+        notifyOfferOwner(savedOffer, NotificationType.TRANSPORT_OFFER_ACCEPTED, "Offer accepted", "Your transport offer was accepted.");
+
+        return transportOfferMapper.toResponse(savedOffer);
     }
 
     public TransportOfferResponse rejectOffer(Long offerId) {
@@ -192,7 +201,10 @@ public class TransportOfferService {
         offer.setStatus(OfferStatus.REJECTED);
         offer.setRespondedAt(LocalDateTime.now());
 
-        return transportOfferMapper.toResponse(transportOfferRepository.save(offer));
+        TransportOffer savedOffer = transportOfferRepository.save(offer);
+        notifyOfferOwner(savedOffer, NotificationType.TRANSPORT_OFFER_REJECTED, "Offer rejected", "Your transport offer was rejected.");
+
+        return transportOfferMapper.toResponse(savedOffer);
     }
 
     public TransportOfferResponse cancelOffer(Long offerId) {
@@ -205,7 +217,10 @@ public class TransportOfferService {
         offer.setStatus(OfferStatus.CANCELLED);
         offer.setRespondedAt(LocalDateTime.now());
 
-        return transportOfferMapper.toResponse(transportOfferRepository.save(offer));
+        TransportOffer savedOffer = transportOfferRepository.save(offer);
+        notifyOfferCounterparty(savedOffer, NotificationType.TRANSPORT_OFFER_CANCELLED, "Offer cancelled", "A transport offer was cancelled.");
+
+        return transportOfferMapper.toResponse(savedOffer);
     }
 
     private TransportOffer findOfferById(Long offerId) {
@@ -226,5 +241,56 @@ public class TransportOfferService {
         });
 
         transportOfferRepository.saveAll(pendingOffers);
+    }
+
+    private void notifyOfferRecipient(TransportOffer offer) {
+        User recipient = offer.getDirection() == OfferDirection.CUSTOMER_TO_DRIVER
+                ? offer.getDriver()
+                : offer.getCustomer();
+
+        notificationService.createNotification(
+                recipient.getId(),
+                NotificationType.TRANSPORT_OFFER_CREATED,
+                "New transport offer",
+                "You received a new transport offer.",
+                "TRANSPORT_OFFER",
+                offer.getId()
+        );
+    }
+
+    private void notifyOfferOwner(
+            TransportOffer offer,
+            NotificationType type,
+            String title,
+            String message
+    ) {
+        notificationService.createNotification(
+                offer.getOfferedBy().getId(),
+                type,
+                title,
+                message,
+                "TRANSPORT_OFFER",
+                offer.getId()
+        );
+    }
+
+    private void notifyOfferCounterparty(
+            TransportOffer offer,
+            NotificationType type,
+            String title,
+            String message
+    ) {
+        User counterparty = offer.getOfferedBy().getId().equals(offer.getDriver().getId())
+                ? offer.getCustomer()
+                : offer.getDriver();
+
+        notificationService.createNotification(
+                counterparty.getId(),
+                type,
+                title,
+                message,
+                "TRANSPORT_OFFER",
+                offer.getId()
+        );
     }
 }
