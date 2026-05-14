@@ -45,6 +45,8 @@ public class WebSecurityConfig {
             "/auth/set-password",
             "/user/register/**",
             "/auth/google",
+            "/ws-logistics/**"
+
     };
 
     @Bean

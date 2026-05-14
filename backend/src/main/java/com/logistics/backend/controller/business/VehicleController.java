@@ -19,14 +19,14 @@ public class VehicleController {
 
     private final VehicleService vehicleService;
 
-    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER')")
+    @PreAuthorize("hasAuthority('ADMIN') or (authentication.principal.driverApproved == true)")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public VehicleResponse createVehicle(@Valid @RequestBody CreateVehicleRequest request) {
         return vehicleService.createVehicle(request);
     }
 
-    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER')")
+    @PreAuthorize("hasAuthority('ADMIN') or (authentication.principal.driverApproved == true and #ownerId == authentication.principal.id)")
     @GetMapping("/my")
     public List<VehicleResponse> getMyVehicles(@RequestParam Long ownerId) {
         return vehicleService.getVehiclesByOwnerId(ownerId);
@@ -38,13 +38,13 @@ public class VehicleController {
         return vehicleService.getVehicleById(id);
     }
 
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'DRIVER', 'ROLE_DRIVER')")
+    @PreAuthorize("hasAuthority('ADMIN') or (authentication.principal.driverApproved == true)")
     @GetMapping
     public List<VehicleResponse> getAllVehicles() {
         return vehicleService.getAllVehicles();
     }
 
-    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER')")
+    @PreAuthorize("hasAuthority('ADMIN') or (authentication.principal.driverApproved == true)")
     @PutMapping("/{id}")
     public VehicleResponse updateVehicle(
             @PathVariable Long id,
@@ -53,13 +53,13 @@ public class VehicleController {
         return vehicleService.updateVehicle(id, request);
     }
 
-    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER', 'ADMIN', 'ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or (authentication.principal.driverApproved == true)")
     @PatchMapping("/{id}/deactivate")
     public VehicleResponse deactivateVehicle(@PathVariable Long id) {
         return vehicleService.deactivateVehicle(id);
     }
 
-    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER', 'ADMIN', 'ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or (authentication.principal.driverApproved == true)")
     @PatchMapping("/{id}/activate")
     public VehicleResponse activateVehicle(@PathVariable Long id) {
         return vehicleService.activateVehicle(id);
