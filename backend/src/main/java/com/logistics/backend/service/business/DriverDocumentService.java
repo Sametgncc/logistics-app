@@ -1,6 +1,7 @@
 package com.logistics.backend.service.business;
 
 import com.logistics.backend.entity.enums.DriverDocumentStatus;
+import com.logistics.backend.entity.enums.NotificationType;
 import com.logistics.backend.entity.enums.Role;
 import com.logistics.backend.entity.user.DriverDocument;
 import com.logistics.backend.entity.user.User;
@@ -12,6 +13,7 @@ import com.logistics.backend.payload.request.RejectDriverDocumentRequest;
 import com.logistics.backend.payload.response.DriverDocumentResponse;
 import com.logistics.backend.repository.business.DriverDocumentRepository;
 import com.logistics.backend.repository.user.UserRepository;
+import com.logistics.backend.service.user.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +27,7 @@ public class DriverDocumentService {
     private final DriverDocumentRepository driverDocumentRepository;
     private final UserRepository userRepository;
     private final DriverDocumentMapper driverDocumentMapper;
+    private final NotificationService notificationService;
 
     public DriverDocumentResponse uploadDocument(CreateDriverDocumentRequest request) {
         User driver = userRepository.findById(request.getDriverId())
@@ -73,7 +76,17 @@ public class DriverDocumentService {
         document.setRejectionReason(null);
         document.setReviewedAt(LocalDateTime.now());
 
-        return driverDocumentMapper.toResponse(driverDocumentRepository.save(document));
+        DriverDocument savedDocument = driverDocumentRepository.save(document);
+        notificationService.createNotification(
+                savedDocument.getDriver().getId(),
+                NotificationType.DRIVER_DOCUMENT_APPROVED,
+                "Document approved",
+                "Your driver document was approved.",
+                "DRIVER_DOCUMENT",
+                savedDocument.getId()
+        );
+
+        return driverDocumentMapper.toResponse(savedDocument);
     }
 
     public DriverDocumentResponse rejectDocument(Long documentId, RejectDriverDocumentRequest request) {
@@ -87,7 +100,17 @@ public class DriverDocumentService {
         document.setRejectionReason(request.getRejectionReason());
         document.setReviewedAt(LocalDateTime.now());
 
-        return driverDocumentMapper.toResponse(driverDocumentRepository.save(document));
+        DriverDocument savedDocument = driverDocumentRepository.save(document);
+        notificationService.createNotification(
+                savedDocument.getDriver().getId(),
+                NotificationType.DRIVER_DOCUMENT_REJECTED,
+                "Document rejected",
+                "Your driver document was rejected.",
+                "DRIVER_DOCUMENT",
+                savedDocument.getId()
+        );
+
+        return driverDocumentMapper.toResponse(savedDocument);
     }
 
     public DriverDocumentResponse getDocumentById(Long documentId) {

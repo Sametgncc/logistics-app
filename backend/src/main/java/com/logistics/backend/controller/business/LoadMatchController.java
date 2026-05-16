@@ -22,6 +22,16 @@ public class LoadMatchController {
         return loadMatchingService.findSuitableRoutePlansForLoad(loadId);
     }
 
+    @PostMapping("/route-plans/{routePlanId}/find-loads")
+    public List<LoadMatchResponse> findSuitableLoadsForRoutePlan(@PathVariable Long routePlanId) {
+        return loadMatchingService.findSuitableLoadsForRoutePlan(routePlanId);
+    }
+
+    @GetMapping("/route-plans/{routePlanId}/suitable-loads/preview")
+    public List<LoadMatchResponse> previewSuitableLoadsForRoutePlan(@PathVariable Long routePlanId) {
+        return loadMatchingService.previewSuitableLoadsForRoutePlan(routePlanId);
+    }
+
     @GetMapping("/loads/{loadId}")
     public List<LoadMatchResponse> getMatchesByLoadId(@PathVariable Long loadId) {
         return loadMatchingService.getMatchesByLoadId(loadId);

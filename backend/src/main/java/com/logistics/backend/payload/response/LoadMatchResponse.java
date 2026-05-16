@@ -15,7 +15,11 @@ public class LoadMatchResponse {
 
     private Long loadId;
     private String pickupCity;
+    private BigDecimal pickupLat;
+    private BigDecimal pickupLng;
     private String deliveryCity;
+    private BigDecimal deliveryLat;
+    private BigDecimal deliveryLng;
     private BigDecimal weightKg;
     private BigDecimal volumeM3;
 
