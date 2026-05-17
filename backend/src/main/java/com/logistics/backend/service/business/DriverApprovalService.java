@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class DriverApprovalService {
     private final UserRepository userRepository;
     private final DriverDocumentRepository driverDocumentRepository;
     private final UserMapper userMapper;
+
 
     public UserResponse approveDriver(Long driverId) {
         User driver = findDriver(driverId);
@@ -70,5 +72,27 @@ public class DriverApprovalService {
                 DriverDocumentType.SRC_CERTIFICATE,
                 DriverDocumentType.PSYCHOTECHNICAL_CERTIFICATE
         };
+    }
+
+    //Bekleyenleri listeler
+    public List<UserResponse> getPendingDrivers() {
+        // Tüm kullanıcıları veya sadece driverApproved = false olanları çekebilirsin.
+        // Şimdilik hata almamak için tümünü çekip Java tarafında filtreliyoruz.
+        return userRepository.findAll().stream()
+                // 1. Şart: Henüz sürücü onayı almamış olanlar (false veya null olanlar)
+                .filter(user -> user.getDriverApproved() == null || !user.getDriverApproved())
+                // 2. Şart: 3 zorunlu belgesi de APPROVED statüsünde olanlar
+                .filter(user -> hasAllDocumentsApproved(user.getId()))
+                .map(userMapper::toUserResponse)
+                .toList();
+    }
+
+    // Üstteki metodun belge kontrolünü yapması için yardımcı metot
+    private boolean hasAllDocumentsApproved(Long driverId) {
+        return Arrays.stream(getRequiredDocumentTypes())
+                .allMatch(type -> driverDocumentRepository
+                        .findByDriverIdAndDocumentType(driverId, type)
+                        .filter(doc -> doc.getStatus() == DriverDocumentStatus.APPROVED)
+                        .isPresent());
     }
 }

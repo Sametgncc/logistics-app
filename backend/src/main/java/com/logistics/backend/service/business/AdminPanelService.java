@@ -40,6 +40,7 @@ public class AdminPanelService {
     private final LoadMapper loadMapper;
     private final RoutePlanMapper routePlanMapper;
     private final TransportOfferMapper transportOfferMapper;
+    private final DriverApprovalService driverApprovalService;
 
     public AdminDashboardResponse getDashboard() {
         return AdminDashboardResponse.builder()
@@ -47,7 +48,7 @@ public class AdminPanelService {
                 .totalCustomers(userRepository.countByRole_Role(Role.CUSTOMER))
                 .totalDrivers(userRepository.countByRole_Role(Role.DRIVER))
                 .approvedDrivers(userRepository.countByDriverApproved(true))
-                .pendingDrivers(userRepository.countByRole_Role(Role.DRIVER) - userRepository.countByDriverApproved(true))
+                .pendingDrivers((long) driverApprovalService.getPendingDrivers().size())
                 .disabledUsers(userRepository.countByEnabled(false))
                 .totalLoads(loadRepository.count())
                 .openLoads(loadRepository.countByStatus(LoadStatus.OPEN))
@@ -70,6 +71,7 @@ public class AdminPanelService {
     }
 
     public List<UserResponse> getUsers(String role) {
+        // 1. Eğer rol belirtilmemişse herkesi getir
         if (role == null || role.isBlank()) {
             return userRepository.findAll()
                     .stream()
@@ -78,6 +80,21 @@ public class AdminPanelService {
         }
 
         Role parsedRole = parseEnum(Role.class, role, "role");
+
+        // 2. ÖZEL DURUM: Eğer Frontend bizden "Sürücüleri (DRIVER)" istiyorsa...
+        if (parsedRole == Role.DRIVER) {
+            return userRepository.findAll().stream()
+                    .filter(user ->
+                            // Veritabanında rolü gerçekten DRIVER olanlar
+                            (user.getRole() != null && user.getRole().getRole() == Role.DRIVER) ||
+                                    // VEYA Rolü müşteri (Customer) olsa bile sürücü onayı (driverApproved) TRUE olanlar
+                                    Boolean.TRUE.equals(user.getDriverApproved())
+                    )
+                    .map(userMapper::toUserResponse)
+                    .toList();
+        }
+
+        // 3. Eğer Müşteri (CUSTOMER) veya Admin gibi diğer roller isteniyorsa standart arama yap
         return userRepository.findByRole_Role(parsedRole)
                 .stream()
                 .map(userMapper::toUserResponse)
