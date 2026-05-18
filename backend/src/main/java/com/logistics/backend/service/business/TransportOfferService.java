@@ -23,6 +23,7 @@ import com.logistics.backend.service.user.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -136,7 +137,10 @@ public class TransportOfferService {
         }
 
         if (direction == OfferDirection.DRIVER_TO_CUSTOMER) {
-            if (offeredBy.getRole().getRole() != Role.DRIVER) {
+            // DEĞİŞEN KISIM: Veritabanında rolü DRIVER olanlar VEYA driverApproved onayı almış olanlar bu işlemi yapabilsin
+            boolean isDriver = (offeredBy.getRole().getRole() == Role.DRIVER) || Boolean.TRUE.equals(offeredBy.getDriverApproved());
+
+            if (!isDriver) {
                 throw new BadRequestException("Only DRIVER can create DRIVER_TO_CUSTOMER offers");
             }
 
@@ -146,6 +150,8 @@ public class TransportOfferService {
         }
 
         if (direction == OfferDirection.CUSTOMER_TO_DRIVER) {
+            // Not: İleride müşteri tarafında benzer bir sorun yaşarsan burayı da
+            // offeredBy.getRole().getRole() != Role.CUSTOMER yerine uygulamanın mantığına göre esnetebilirsin.
             if (offeredBy.getRole().getRole() != Role.CUSTOMER) {
                 throw new BadRequestException("Only CUSTOMER can create CUSTOMER_TO_DRIVER offers");
             }
@@ -179,6 +185,16 @@ public class TransportOfferService {
         offer.setRespondedAt(LocalDateTime.now());
 
         offer.getLoad().setStatus(LoadStatus.MATCHED);
+
+        RoutePlan routePlan = offer.getRoutePlan();
+        routePlan.setAvailableCapacityKg(routePlan.getAvailableCapacityKg().subtract(offer.getLoad().getWeightKg()));
+        routePlan.setAvailableCapacityVolumeM3(routePlan.getAvailableCapacityVolumeM3().subtract(offer.getLoad().getVolumeM3()));
+
+        // Eğer kapasite sıfırlandıysa rota planını FULL yap
+        if (routePlan.getAvailableCapacityKg().compareTo(BigDecimal.ZERO) <= 0 ||
+                routePlan.getAvailableCapacityVolumeM3().compareTo(BigDecimal.ZERO) <= 0) {
+            routePlan.setStatus(RoutePlanStatus.FULL);
+        }
 
         rejectOtherPendingOffersForSameLoad(
                 offer.getLoad().getId(),

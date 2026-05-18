@@ -30,11 +30,17 @@ public class UserDetailsImpl implements UserDetails {
         this.name = name;
         this.password = password;
         this.driverApproved = driverApproved;
+        List<GrantedAuthority> authorityList = new ArrayList<>();
+        authorityList.add(new SimpleGrantedAuthority(role.name()));
+        authorityList.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
 
-        this.authorities = List.of(
-                new SimpleGrantedAuthority(role.name()),           // DRIVER
-                new SimpleGrantedAuthority("ROLE_" + role.name())  // ROLE_DRIVER
-        );
+        // EĞER SÜRÜCÜ ONAYI VARSA, SİSTEMDE "DRIVER" GİBİ DAVRANMASINA İZİN VER
+        if (Boolean.TRUE.equals(driverApproved)) {
+            authorityList.add(new SimpleGrantedAuthority("DRIVER"));
+            authorityList.add(new SimpleGrantedAuthority("ROLE_DRIVER"));
+        }
+
+        this.authorities = authorityList;
     }
 
     @Override

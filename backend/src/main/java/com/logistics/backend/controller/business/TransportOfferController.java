@@ -71,4 +71,16 @@ public class TransportOfferController {
     public TransportOfferResponse cancelOffer(@PathVariable Long offerId) {
         return transportOfferService.cancelOffer(offerId);
     }
+
+    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER')")
+    @GetMapping("/my-offers/driver")
+    public List<TransportOfferResponse> getMyOffersAsDriver(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return transportOfferService.getOffersByDriverId(userDetails.getId());
+    }
+
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER')")
+    @GetMapping("/my-offers/customer")
+    public List<TransportOfferResponse> getMyOffersAsCustomer(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return transportOfferService.getOffersByCustomerId(userDetails.getId());
+    }
 }

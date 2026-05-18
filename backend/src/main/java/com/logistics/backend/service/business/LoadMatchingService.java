@@ -111,9 +111,8 @@ public class LoadMatchingService {
         if (match.getStatus() != MatchStatus.PENDING) {
             throw new BadRequestException("Only PENDING matches can be accepted");
         }
-
         match.setStatus(MatchStatus.ACCEPTED);
-        match.getLoad().setStatus(LoadStatus.MATCHED);
+       // match.getLoad().setStatus(LoadStatus.MATCHED);
 
         return loadMatchMapper.toResponse(loadMatchRepository.save(match));
     }
