@@ -14,6 +14,7 @@ import com.logistics.backend.exception.BadRequestException;
 import com.logistics.backend.exception.ResourceNotFoundException;
 import com.logistics.backend.mapper.TransportOfferMapper;
 import com.logistics.backend.payload.request.CreateTransportOfferRequest;
+import com.logistics.backend.payload.request.CounterTransportOfferRequest;
 import com.logistics.backend.payload.response.TransportOfferResponse;
 import com.logistics.backend.repository.business.LoadRepository;
 import com.logistics.backend.repository.business.RoutePlanRepository;
@@ -22,6 +23,7 @@ import com.logistics.backend.repository.user.UserRepository;
 import com.logistics.backend.service.user.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,6 +39,7 @@ public class TransportOfferService {
     private final TransportOfferMapper transportOfferMapper;
     private final NotificationService notificationService;
 
+    @Transactional
     public TransportOfferResponse createOffer(CreateTransportOfferRequest request, Long offeredById) {
         Load load = loadRepository.findById(request.getLoadId())
                 .orElseThrow(() -> new ResourceNotFoundException("Load not found with id: " + request.getLoadId()));
@@ -66,6 +69,55 @@ public class TransportOfferService {
 
         TransportOffer savedOffer = transportOfferRepository.save(offer);
         notifyOfferRecipient(savedOffer);
+
+        return transportOfferMapper.toResponse(savedOffer);
+    }
+
+    @Transactional
+    public TransportOfferResponse counterOffer(Long offerId, CounterTransportOfferRequest request, Long offeredById) {
+        TransportOffer originalOffer = findOfferById(offerId);
+
+        if (originalOffer.getStatus() != OfferStatus.PENDING) {
+            throw new BadRequestException("Only PENDING offers can be countered");
+        }
+
+        User offeredBy = userRepository.findById(offeredById)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + offeredById));
+
+        if (originalOffer.getOfferedBy().getId().equals(offeredBy.getId())) {
+            throw new BadRequestException("Offer owner cannot counter their own offer");
+        }
+
+        if (!isOfferParticipant(originalOffer, offeredBy.getId())) {
+            throw new BadRequestException("Only offer participants can create counter offers");
+        }
+
+        Load load = originalOffer.getLoad();
+        RoutePlan routePlan = originalOffer.getRoutePlan();
+        OfferDirection counterDirection = resolveOfferDirection(offeredBy, originalOffer);
+
+        validateLoadAndRoutePlan(load, routePlan);
+        validateOfferDirection(counterDirection, offeredBy, load, routePlan);
+
+        originalOffer.setStatus(OfferStatus.COUNTERED);
+        originalOffer.setRespondedAt(LocalDateTime.now());
+        transportOfferRepository.save(originalOffer);
+
+        TransportOffer counterOffer = TransportOffer.builder()
+                .load(load)
+                .routePlan(routePlan)
+                .driver(originalOffer.getDriver())
+                .customer(originalOffer.getCustomer())
+                .offeredBy(offeredBy)
+                .direction(counterDirection)
+                .price(request.getPrice())
+                .message(request.getMessage())
+                .status(OfferStatus.PENDING)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        TransportOffer savedOffer = transportOfferRepository.save(counterOffer);
+        notifyOfferRecipient(savedOffer, NotificationType.TRANSPORT_OFFER_COUNTERED, "Counter offer received", "You received a counter offer.");
 
         return transportOfferMapper.toResponse(savedOffer);
     }
@@ -168,6 +220,22 @@ public class TransportOfferService {
         }
     }
 
+    private boolean isOfferParticipant(TransportOffer offer, Long userId) {
+        return offer.getDriver().getId().equals(userId) || offer.getCustomer().getId().equals(userId);
+    }
+
+    private OfferDirection resolveOfferDirection(User offeredBy, TransportOffer originalOffer) {
+        if (originalOffer.getDriver().getId().equals(offeredBy.getId())) {
+            return OfferDirection.DRIVER_TO_CUSTOMER;
+        }
+
+        if (originalOffer.getCustomer().getId().equals(offeredBy.getId())) {
+            return OfferDirection.CUSTOMER_TO_DRIVER;
+        }
+
+        throw new BadRequestException("Only offer participants can create counter offers");
+    }
+
     public TransportOfferResponse acceptOffer(Long offerId) {
         TransportOffer offer = findOfferById(offerId);
 
@@ -244,15 +312,29 @@ public class TransportOfferService {
     }
 
     private void notifyOfferRecipient(TransportOffer offer) {
+        notifyOfferRecipient(
+                offer,
+                NotificationType.TRANSPORT_OFFER_CREATED,
+                "New transport offer",
+                "You received a new transport offer."
+        );
+    }
+
+    private void notifyOfferRecipient(
+            TransportOffer offer,
+            NotificationType type,
+            String title,
+            String message
+    ) {
         User recipient = offer.getDirection() == OfferDirection.CUSTOMER_TO_DRIVER
                 ? offer.getDriver()
                 : offer.getCustomer();
 
         notificationService.createNotification(
                 recipient.getId(),
-                NotificationType.TRANSPORT_OFFER_CREATED,
-                "New transport offer",
-                "You received a new transport offer.",
+                type,
+                title,
+                message,
                 "TRANSPORT_OFFER",
                 offer.getId()
         );

@@ -65,6 +65,7 @@ public class AdminPanelService {
                 .acceptedOffers(transportOfferRepository.countByStatus(OfferStatus.ACCEPTED))
                 .rejectedOffers(transportOfferRepository.countByStatus(OfferStatus.REJECTED))
                 .cancelledOffers(transportOfferRepository.countByStatus(OfferStatus.CANCELLED))
+                .counteredOffers(transportOfferRepository.countByStatus(OfferStatus.COUNTERED))
                 .pendingDriverDocuments(driverDocumentRepository.countByStatus(DriverDocumentStatus.PENDING))
                 .build();
     }
