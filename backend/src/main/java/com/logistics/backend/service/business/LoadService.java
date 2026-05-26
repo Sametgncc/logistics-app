@@ -27,6 +27,8 @@ public class LoadService {
     private final UserRepository userRepository;
     private final LoadMapper loadMapper;
 
+    private final LoadMatchingService loadMatchingService;
+
     public LoadResponse createLoad(CreateLoadRequest request) {
         User customer = userRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + request.getCustomerId()));
@@ -54,7 +56,10 @@ public class LoadService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return loadMapper.toResponse(loadRepository.save(load));
+        Load savedLoad = loadRepository.save(load);
+        loadMatchingService.findSuitableRoutePlansForLoad(savedLoad.getId());
+
+        return loadMapper.toResponse(savedLoad);
     }
 
     public List<LoadResponse> getMyLoads(Long customerId) {

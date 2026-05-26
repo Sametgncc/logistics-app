@@ -31,6 +31,8 @@ public class RoutePlanService {
     private final VehicleRepository vehicleRepository;
     private final RoutePlanMapper routePlanMapper;
 
+    private final LoadMatchingService loadMatchingService;
+
     public RoutePlanResponse createRoutePlan(CreateRoutePlanRequest request) {
         User driver = userRepository.findById(request.getDriverId())
                 .orElseThrow(() -> new ResourceNotFoundException("Driver not found with id: " + request.getDriverId()));
@@ -62,6 +64,7 @@ public class RoutePlanService {
                 .build();
 
         RoutePlan savedRoutePlan = routePlanRepository.save(routePlan);
+        loadMatchingService.findSuitableLoadsForRoutePlan(savedRoutePlan.getId());
         return routePlanMapper.toResponse(savedRoutePlan);
     }
 

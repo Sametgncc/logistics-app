@@ -10,10 +10,10 @@ import com.logistics.backend.repository.user.RoleRepository;
 import com.logistics.backend.repository.user.UserRepository;
 import com.logistics.backend.security.jwt.JwtUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.UUID;
 
 @Service
@@ -25,6 +25,7 @@ public class GoogleAuthService {
     private final UserRepository userRepository;
     private final JwtUtils jwtUtils;
     private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public String authenticateWithGoogle(String idTokenString) throws Exception {
         GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
@@ -52,7 +53,7 @@ public class GoogleAuthService {
 
                 // Kullanıcı Google ile giriş yaptığı için normal bir şifreye ihtiyacı yok,
                 // ancak veritabanı kısıtlamalarına takılmamak için rastgele karmaşık bir şifre atıyoruz.
-                user.setPassword(UUID.randomUUID().toString());
+                user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
 
                 user.setEmailVerified(true); // Google'dan geldiği için doğrudan onaylı kabul edebiliriz
                 user.setEnabled(true);

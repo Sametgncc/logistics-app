@@ -2,6 +2,7 @@ package com.logistics.backend.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException; // YENİ EKLENDİ
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,6 +40,17 @@ public class GlobalExceptionHandler {
 
         body.put("errors", errors);
         return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<?> handleAccessDenied(AccessDeniedException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Erişim reddedildi: Bu işlemi gerçekleştirmek için yetkiniz bulunmamaktadır.");
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleGlobalException(Exception ex) {
+        // Loglama yapılabilir: ex.printStackTrace();
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Sunucu tarafında beklenmeyen bir hata oluştu: " + ex.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {

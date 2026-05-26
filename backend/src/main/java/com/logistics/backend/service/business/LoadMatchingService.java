@@ -19,6 +19,7 @@ import com.logistics.backend.service.user.NotificationService;
 import com.logistics.backend.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,10 +29,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LoadMatchingService {
 
+    // Maksimum Sapma Limiti: Sürücünün ana rotasından en fazla ne kadar çıkabileceği (km)
+    private static final double MAX_TOTAL_DEVIATION_KM = 75.0;
 
-    private static final double MAX_PICKUP_DISTANCE_FROM_ROUTE_ORIGIN_KM = 600.0;
-    private static final double MAX_DELIVERY_DISTANCE_FROM_ROUTE_DESTINATION_KM = 80.0;
-    private static final double MAX_TOTAL_DEVIATION_KM = 700.0;
+    // Yakınlık Bonusu Puanlama Sınırı (km)
+    private static final double BONUS_DISTANCE_THRESHOLD_KM = 50.0;
 
     private final LoadRepository loadRepository;
     private final RoutePlanRepository routePlanRepository;
@@ -104,6 +106,7 @@ public class LoadMatchingService {
                 .toList();
     }
 
+    @Transactional
     public LoadMatchResponse acceptMatch(Long matchId) {
         LoadMatch match = loadMatchRepository.findById(matchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Match not found with id: " + matchId));
@@ -112,7 +115,18 @@ public class LoadMatchingService {
             throw new BadRequestException("Only PENDING matches can be accepted");
         }
         match.setStatus(MatchStatus.ACCEPTED);
-       // match.getLoad().setStatus(LoadStatus.MATCHED);
+
+        Load load = match.getLoad();
+        load.setStatus(LoadStatus.MATCHED);
+
+        RoutePlan routePlan = match.getRoutePlan();
+        routePlan.setAvailableCapacityKg(routePlan.getAvailableCapacityKg().subtract(load.getWeightKg()));
+        routePlan.setAvailableCapacityVolumeM3(routePlan.getAvailableCapacityVolumeM3().subtract(load.getVolumeM3()));
+
+        if (routePlan.getAvailableCapacityKg().compareTo(BigDecimal.ZERO) <= 0 ||
+                routePlan.getAvailableCapacityVolumeM3().compareTo(BigDecimal.ZERO) <= 0) {
+            routePlan.setStatus(RoutePlanStatus.FULL);
+        }
 
         return loadMatchMapper.toResponse(loadMatchRepository.save(match));
     }
@@ -152,7 +166,7 @@ public class LoadMatchingService {
                 .routePlan(routePlan)
                 .status(MatchStatus.PENDING)
                 .matchScore(score)
-                .note(buildMatchNote(load, routePlan))
+                .note(buildMatchNote(load, routePlan, directDistance, routeWithLoadDistance, deviation))
                 .createdAt(LocalDateTime.now())
                 .directRouteDistanceKm(BigDecimal.valueOf(directDistance))
                 .routeWithLoadDistanceKm(BigDecimal.valueOf(routeWithLoadDistance))
@@ -161,11 +175,17 @@ public class LoadMatchingService {
     }
 
     private boolean isRoutePlanSuitableForLoad(RoutePlan routePlan, Load load) {
-        return isRoutePlanOpen(routePlan)
-                && hasEnoughCapacity(routePlan, load)
-                && hasLocationCompatibility(routePlan, load)
-                && hasTimeCompatibility(routePlan, load)
-                && hasAcceptableDeviation(routePlan, load);
+        boolean open = isRoutePlanOpen(routePlan);
+        boolean cap = hasEnoughCapacity(routePlan, load);
+        boolean time = hasTimeCompatibility(routePlan, load);
+        boolean dev = hasAcceptableDeviation(routePlan, load);
+
+        if (!open || !cap || !time || !dev) {
+            System.out.println("Eşleşme başarısız! LoadID: " + load.getId() + " RouteID: " + routePlan.getId());
+            System.out.println("Detaylar -> Open: " + open + ", Capacity: " + cap + ", Time: " + time + ", Deviation: " + dev);
+        }
+
+        return open && cap && time && dev;
     }
 
     private boolean isRoutePlanOpen(RoutePlan routePlan) {
@@ -177,70 +197,65 @@ public class LoadMatchingService {
                 && routePlan.getAvailableCapacityVolumeM3().compareTo(load.getVolumeM3()) >= 0;
     }
 
-    private boolean hasCityCompatibility(RoutePlan routePlan, Load load) {
-        boolean exactMatch =
-                routePlan.getOriginCity().equalsIgnoreCase(load.getPickupCity())
-                        && routePlan.getDestinationCity().equalsIgnoreCase(load.getDeliveryCity());
-
-        boolean sameDestination =
-                routePlan.getDestinationCity().equalsIgnoreCase(load.getDeliveryCity());
-
-        return exactMatch || sameDestination;
-    }
-
-    private boolean hasLocationCompatibility(RoutePlan routePlan, Load load) {
-        return hasCityCompatibility(routePlan, load)
-                || hasPickupAndDeliveryNearRouteEndpoints(routePlan, load)
-                || hasAcceptableDeviation(routePlan, load);
+    private boolean hasAcceptableDeviation(RoutePlan routePlan, Load load) {
+        double deviationKm = calculateDeviationKm(routePlan, load);
+        return deviationKm <= MAX_TOTAL_DEVIATION_KM;
     }
 
     private boolean hasTimeCompatibility(RoutePlan routePlan, Load load) {
-        if (routePlan.getDepartureTime() == null || load.getPickupTime() == null) {
-            return false;
-        }
-
         if (routePlan.getDepartureTime().isAfter(load.getPickupTime())) {
             return false;
         }
-
         if (load.getDeliveryDeadline() != null &&
                 routePlan.getEstimatedArrivalTime() != null &&
                 routePlan.getEstimatedArrivalTime().isAfter(load.getDeliveryDeadline())) {
             return false;
         }
-
         return true;
     }
 
     private BigDecimal calculateMatchScore(Load load, RoutePlan routePlan) {
         int score = 0;
 
-        if (routePlan.getDestinationCity().equalsIgnoreCase(load.getDeliveryCity())) {
-            score += 30;
-        }
-
-        if (routePlan.getOriginCity().equalsIgnoreCase(load.getPickupCity())) {
-            score += 25;
-        }
-
+        // 1. Kapasite yeterliliği puanı
         if (hasEnoughCapacity(routePlan, load)) {
             score += 20;
         }
 
-        double deviationKm = calculateDeviationKm(routePlan, load);
-        if (deviationKm <= 50) {
-            score += 25;
-        } else if (deviationKm <= 150) {
-            score += 20;
-        } else if (deviationKm <= 300) {
-            score += 15;
-        } else if (deviationKm <= 500) {
-            score += 10;
-        } else {
-            score += 5;
+        // 2. Yükün teslimat noktası ile sürücünün hedefi birbirine yakın mı? (Şehir ismi yerine koordinat kontrolü)
+        double deliveryToDestinationDistance = calculateDistanceKm(
+                load.getDeliveryLat(), load.getDeliveryLng(),
+                routePlan.getDestinationLat(), routePlan.getDestinationLng()
+        );
+        if (deliveryToDestinationDistance <= BONUS_DISTANCE_THRESHOLD_KM) {
+            score += 30;
         }
 
-        return BigDecimal.valueOf(score);
+        // 3. Yükün alınacağı nokta ile sürücünün başlangıcı birbirine yakın mı?
+        double originToPickupDistance = calculateDistanceKm(
+                routePlan.getOriginLat(), routePlan.getOriginLng(),
+                load.getPickupLat(), load.getPickupLng()
+        );
+        if (originToPickupDistance <= BONUS_DISTANCE_THRESHOLD_KM) {
+            score += 25;
+        }
+
+        // 4. Genel Sapma Puanı (Ne kadar az sapma, o kadar yüksek puan)
+        double deviationKm = calculateDeviationKm(routePlan, load);
+        if (deviationKm <= 10) {
+            score += 25;
+        } else if (deviationKm <= 30) {
+            score += 20;
+        } else if (deviationKm <= 50) {
+            score += 15;
+        } else if (deviationKm <= 75) {
+            score += 10;
+        } else {
+            score += 0;
+        }
+
+        // Toplam skoru 100 üzerinden sınırlandır
+        return BigDecimal.valueOf(Math.min(score, 100));
     }
 
     private void validateLoadIsOpen(Load load) {
@@ -255,87 +270,41 @@ public class LoadMatchingService {
         }
     }
 
-
-
-
-    private String buildMatchNote(Load load, RoutePlan routePlan) {
-        double directDistance = calculateDirectRouteDistance(routePlan);
-        double routeWithLoadDistance = calculateRouteWithLoadDistance(routePlan, load);
-        double deviation = calculateDeviationKm(routePlan, load);
-
+    private String buildMatchNote(Load load, RoutePlan routePlan, double direct, double routeWithLoad, double deviation) {
         return String.format(
                 "Direct route: %.2f km, route with load: %.2f km, deviation: %.2f km",
-                directDistance,
-                routeWithLoadDistance,
-                deviation
+                direct, routeWithLoad, deviation
         );
     }
 
-
-
-
-    private boolean hasPickupAndDeliveryNearRouteEndpoints(RoutePlan routePlan, Load load) {
-        double pickupDistanceFromRouteOrigin = GeoUtils.calculateDistance(
-                routePlan.getOriginLat().doubleValue(),
-                routePlan.getOriginLng().doubleValue(),
-                load.getPickupLat().doubleValue(),
-                load.getPickupLng().doubleValue()
-        );
-
-        double deliveryDistanceFromRouteDestination = GeoUtils.calculateDistance(
-                routePlan.getDestinationLat().doubleValue(),
-                routePlan.getDestinationLng().doubleValue(),
-                load.getDeliveryLat().doubleValue(),
-                load.getDeliveryLng().doubleValue()
-        );
-
-        return pickupDistanceFromRouteOrigin <= MAX_PICKUP_DISTANCE_FROM_ROUTE_ORIGIN_KM
-                && deliveryDistanceFromRouteDestination <= MAX_DELIVERY_DISTANCE_FROM_ROUTE_DESTINATION_KM;
-    }
-
-    private double calculateDistanceKm(
-            BigDecimal lat1,
-            BigDecimal lng1,
-            BigDecimal lat2,
-            BigDecimal lng2
-    ) {
+    private double calculateDistanceKm(BigDecimal lat1, BigDecimal lng1, BigDecimal lat2, BigDecimal lng2) {
         return GeoUtils.calculateDistance(
-                lat1.doubleValue(),
-                lng1.doubleValue(),
-                lat2.doubleValue(),
-                lng2.doubleValue()
+                lat1.doubleValue(), lng1.doubleValue(),
+                lat2.doubleValue(), lng2.doubleValue()
         );
     }
 
     private double calculateDirectRouteDistance(RoutePlan routePlan) {
         return calculateDistanceKm(
-                routePlan.getOriginLat(),
-                routePlan.getOriginLng(),
-                routePlan.getDestinationLat(),
-                routePlan.getDestinationLng()
+                routePlan.getOriginLat(), routePlan.getOriginLng(),
+                routePlan.getDestinationLat(), routePlan.getDestinationLng()
         );
     }
 
     private double calculateRouteWithLoadDistance(RoutePlan routePlan, Load load) {
         double originToPickup = calculateDistanceKm(
-                routePlan.getOriginLat(),
-                routePlan.getOriginLng(),
-                load.getPickupLat(),
-                load.getPickupLng()
+                routePlan.getOriginLat(), routePlan.getOriginLng(),
+                load.getPickupLat(), load.getPickupLng()
         );
 
         double pickupToDelivery = calculateDistanceKm(
-                load.getPickupLat(),
-                load.getPickupLng(),
-                load.getDeliveryLat(),
-                load.getDeliveryLng()
+                load.getPickupLat(), load.getPickupLng(),
+                load.getDeliveryLat(), load.getDeliveryLng()
         );
 
         double deliveryToDestination = calculateDistanceKm(
-                load.getDeliveryLat(),
-                load.getDeliveryLng(),
-                routePlan.getDestinationLat(),
-                routePlan.getDestinationLng()
+                load.getDeliveryLat(), load.getDeliveryLng(),
+                routePlan.getDestinationLat(), routePlan.getDestinationLng()
         );
 
         return originToPickup + pickupToDelivery + deliveryToDestination;
@@ -344,22 +313,12 @@ public class LoadMatchingService {
     private double calculateDeviationKm(RoutePlan routePlan, Load load) {
         double directRouteDistance = calculateDirectRouteDistance(routePlan);
         double routeWithLoadDistance = calculateRouteWithLoadDistance(routePlan, load);
-
         return routeWithLoadDistance - directRouteDistance;
     }
-
-    private boolean hasAcceptableDeviation(RoutePlan routePlan, Load load) {
-        double deviationKm = calculateDeviationKm(routePlan, load);
-        return deviationKm <= MAX_TOTAL_DEVIATION_KM;
-    }
-
-
-
 
     private MatchDebugResponse buildDebugResponse(Load load, RoutePlan routePlan) {
         boolean routePlanOpen = isRoutePlanOpen(routePlan);
         boolean enoughCapacity = hasEnoughCapacity(routePlan, load);
-        boolean cityCompatible = hasLocationCompatibility(routePlan, load);
         boolean timeCompatible = hasTimeCompatibility(routePlan, load);
         boolean acceptableDeviation = hasAcceptableDeviation(routePlan, load);
 
@@ -369,7 +328,6 @@ public class LoadMatchingService {
 
         boolean suitable = routePlanOpen
                 && enoughCapacity
-                && cityCompatible
                 && timeCompatible
                 && acceptableDeviation;
 
@@ -378,44 +336,22 @@ public class LoadMatchingService {
                 .routePlanId(routePlan.getId())
                 .routePlanOpen(routePlanOpen)
                 .enoughCapacity(enoughCapacity)
-                .cityCompatible(cityCompatible)
+                .cityCompatible(acceptableDeviation) // Artık lokasyon uyumluluğunu sapma belirliyor
                 .timeCompatible(timeCompatible)
                 .acceptableDeviation(acceptableDeviation)
                 .directRouteDistanceKm(directDistance)
                 .routeWithLoadDistanceKm(routeWithLoadDistance)
                 .deviationKm(deviation)
                 .suitable(suitable)
-                .reason(buildDebugReason(routePlanOpen, enoughCapacity, cityCompatible, timeCompatible, acceptableDeviation))
+                .reason(buildDebugReason(routePlanOpen, enoughCapacity, timeCompatible, acceptableDeviation))
                 .build();
     }
 
-    private String buildDebugReason(
-            boolean routePlanOpen,
-            boolean enoughCapacity,
-            boolean cityCompatible,
-            boolean timeCompatible,
-            boolean acceptableDeviation
-    ) {
-        if (!routePlanOpen) {
-            return "Route plan is not OPEN";
-        }
-
-        if (!enoughCapacity) {
-            return "Route plan capacity is not enough";
-        }
-
-        if (!cityCompatible) {
-            return "Location compatibility failed";
-        }
-
-        if (!timeCompatible) {
-            return "Time compatibility failed";
-        }
-
-        if (!acceptableDeviation) {
-            return "Route deviation is too high";
-        }
-
+    private String buildDebugReason(boolean routePlanOpen, boolean enoughCapacity, boolean timeCompatible, boolean acceptableDeviation) {
+        if (!routePlanOpen) return "Route plan is not OPEN";
+        if (!enoughCapacity) return "Route plan capacity is not enough";
+        if (!timeCompatible) return "Time compatibility failed";
+        if (!acceptableDeviation) return "Route deviation is too high (>" + MAX_TOTAL_DEVIATION_KM + " km)";
         return "Route plan is suitable";
     }
 
@@ -423,8 +359,8 @@ public class LoadMatchingService {
         notificationService.createNotification(
                 match.getLoad().getCustomer().getId(),
                 NotificationType.LOAD_MATCH_CREATED,
-                "New route match",
-                "A suitable route was found for your load.",
+                "Yeni rota eşleşmesi",
+                "Yükünüz için uygun bir araç bulundu.",
                 "LOAD_MATCH",
                 match.getId()
         );
@@ -432,8 +368,8 @@ public class LoadMatchingService {
         notificationService.createNotification(
                 match.getRoutePlan().getDriver().getId(),
                 NotificationType.LOAD_MATCH_CREATED,
-                "New suitable load",
-                "A suitable load was found for your route plan.",
+                "Yeni uygun yük",
+                "Rotanızın üzerinde yeni bir yük bulundu.",
                 "LOAD_MATCH",
                 match.getId()
         );
