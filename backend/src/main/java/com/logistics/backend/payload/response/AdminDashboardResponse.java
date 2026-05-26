@@ -32,6 +32,7 @@ public class AdminDashboardResponse {
     private long acceptedOffers;
     private long rejectedOffers;
     private long cancelledOffers;
+    private long counteredOffers;
 
     private long pendingDriverDocuments;
 }

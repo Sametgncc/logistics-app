@@ -1,6 +1,7 @@
 package com.logistics.backend.controller.business;
 
 import com.logistics.backend.payload.request.CreateTransportOfferRequest;
+import com.logistics.backend.payload.request.CounterTransportOfferRequest;
 import com.logistics.backend.payload.response.TransportOfferResponse;
 import com.logistics.backend.security.service.UserDetailsImpl;
 import com.logistics.backend.service.business.TransportOfferService;
@@ -52,6 +53,17 @@ public class TransportOfferController {
     @GetMapping("/customers/{customerId}")
     public List<TransportOfferResponse> getOffersByCustomerId(@PathVariable Long customerId) {
         return transportOfferService.getOffersByCustomerId(customerId);
+    }
+
+    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER', 'CUSTOMER', 'ROLE_CUSTOMER')")
+    @PostMapping("/{offerId}/counter")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TransportOfferResponse counterOffer(
+            @PathVariable Long offerId,
+            @Valid @RequestBody CounterTransportOfferRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        return transportOfferService.counterOffer(offerId, request, userDetails.getId());
     }
 
     @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER', 'CUSTOMER', 'ROLE_CUSTOMER')")

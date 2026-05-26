@@ -2,6 +2,7 @@ package com.logistics.backend.entity.enums;
 
 public enum NotificationType {
     TRANSPORT_OFFER_CREATED,
+    TRANSPORT_OFFER_COUNTERED,
     TRANSPORT_OFFER_ACCEPTED,
     TRANSPORT_OFFER_REJECTED,
     TRANSPORT_OFFER_CANCELLED,
