@@ -391,4 +391,18 @@ public class TransportOfferService {
                 offer.getId()
         );
     }
+
+    public List<TransportOfferResponse> getRecentAcceptedOffersAsCustomer(Long customerId) {
+        return transportOfferRepository.findByCustomerIdAndStatusOrderByRespondedAtDesc(customerId, OfferStatus.ACCEPTED)
+                .stream()
+                .map(transportOfferMapper::toResponse)
+                .toList();
+    }
+
+    public List<TransportOfferResponse> getRecentAcceptedOffersAsDriver(Long driverId) {
+        return transportOfferRepository.findByDriverIdAndStatusOrderByRespondedAtDesc(driverId, OfferStatus.ACCEPTED)
+                .stream()
+                .map(transportOfferMapper::toResponse)
+                .toList();
+    }
 }

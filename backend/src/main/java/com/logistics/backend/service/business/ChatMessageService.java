@@ -24,7 +24,7 @@ public class ChatMessageService {
 
     @Transactional
     public ChatMessageDto saveMessage(ChatMessageDto messageDto) {
-
+        System.out.println("GELEN MESAJ: " + messageDto.getContent());
         if (messageDto.getTimestamp() == null) {
             messageDto.setTimestamp(LocalDateTime.now());
         }
@@ -50,6 +50,7 @@ public class ChatMessageService {
 
         ChatMessage saved = messageRepository.save(chatMessage);
         messageDto.setId(saved.getId());
+        System.out.println("KAYIT BAŞARILI, ID: " + saved.getId());
         return messageDto;
     }
 

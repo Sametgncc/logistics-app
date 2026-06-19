@@ -17,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/transport-offers")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class TransportOfferController {
 
     private final TransportOfferService transportOfferService;
@@ -94,5 +95,17 @@ public class TransportOfferController {
     @GetMapping("/my-offers/customer")
     public List<TransportOfferResponse> getMyOffersAsCustomer(@AuthenticationPrincipal UserDetailsImpl userDetails) {
         return transportOfferService.getOffersByCustomerId(userDetails.getId());
+    }
+
+    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER', 'CUSTOMER', 'ROLE_CUSTOMER')")
+    @GetMapping("/recent-operations/customer")
+    public List<TransportOfferResponse> getRecentCustomerOperations(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return transportOfferService.getRecentAcceptedOffersAsCustomer(userDetails.getId());
+    }
+
+    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER', 'CUSTOMER', 'ROLE_CUSTOMER')")
+    @GetMapping("/recent-operations/driver")
+    public List<TransportOfferResponse> getRecentDriverOperations(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return transportOfferService.getRecentAcceptedOffersAsDriver(userDetails.getId());
     }
 }
