@@ -2,6 +2,8 @@ package com.logistics.backend.service.business;
 
 import com.logistics.backend.entity.business.ChatMessage;
 import com.logistics.backend.entity.user.User;
+import com.logistics.backend.exception.BadRequestException;
+import com.logistics.backend.exception.ResourceNotFoundException;
 import com.logistics.backend.mapper.ChatMessageMapper;
 import com.logistics.backend.payload.chat.ChatMessageDto;
 import com.logistics.backend.repository.business.ChatMessageRepository;
@@ -11,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 
@@ -23,43 +26,39 @@ public class ChatMessageService {
     private final ChatMessageMapper messageMapper;
 
     @Transactional
-    public ChatMessageDto saveMessage(ChatMessageDto messageDto) {
-        System.out.println("GELEN MESAJ: " + messageDto.getContent());
-        if (messageDto.getTimestamp() == null) {
-            messageDto.setTimestamp(LocalDateTime.now());
+    public ChatMessageDto saveMessage(Long authenticatedSenderId, ChatMessageDto messageDto) {
+        if (authenticatedSenderId.equals(messageDto.getRecipientId())) {
+            throw new BadRequestException("Kendinize mesaj gönderemezsiniz");
         }
 
-        User sender = userRepository.findById(messageDto.getSenderId())
-                .orElseThrow(() -> new RuntimeException("Gönderen kullanıcı bulunamadı"));
+        User sender = userRepository.findById(authenticatedSenderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Gönderen kullanıcı bulunamadı"));
 
         User receiver = userRepository.findById(messageDto.getRecipientId())
-                .orElseThrow(() -> new RuntimeException("Alıcı kullanıcı bulunamadı"));
-
-        // Opsiyonel: Nakliyeciniz projesi için Rol Kontrolü
-        // (Örn: Sadece Müşteri ve Sürücü mesajlaşabilir, iki müşteri mesajlaşamaz gibi kurallar ekleyebilirsin)
-        // if (sender.getRole().equals("CUSTOMER") && receiver.getRole().equals("CUSTOMER")) {
-        //     throw new RuntimeException("Müşteriler kendi aralarında mesajlaşamaz.");
-        // }
+                .orElseThrow(() -> new ResourceNotFoundException("Alıcı kullanıcı bulunamadı"));
 
         ChatMessage chatMessage = ChatMessage.builder()
                 .senderId(sender.getId())
                 .recipientId(receiver.getId())
                 .content(messageDto.getContent())
-                .timestamp(messageDto.getTimestamp())
+                .timestamp(LocalDateTime.now(ZoneOffset.UTC))
                 .build();
 
         ChatMessage saved = messageRepository.save(chatMessage);
-        messageDto.setId(saved.getId());
-        System.out.println("KAYIT BAŞARILI, ID: " + saved.getId());
-        return messageDto;
+        return messageMapper.toDto(saved);
     }
 
     @Transactional(readOnly = true)
-    public List<ChatMessageDto> getChatHistory(Long user1Id, Long user2Id) {
-        if (user1Id.equals(user2Id)) {
+    public List<ChatMessageDto> getChatHistory(Long authenticatedUserId, Long otherUserId) {
+        if (authenticatedUserId.equals(otherUserId)) {
             return List.of();
         }
-        List<ChatMessage> history = messageRepository.findChatHistory(user1Id, user2Id);
+
+        if (!userRepository.existsById(otherUserId)) {
+            throw new ResourceNotFoundException("Alıcı kullanıcı bulunamadı");
+        }
+
+        List<ChatMessage> history = messageRepository.findChatHistory(authenticatedUserId, otherUserId);
         return messageMapper.toDtoList(history);
     }
 }

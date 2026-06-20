@@ -45,7 +45,8 @@ public class WebSecurityConfig {
             "/auth/set-password",
             "/user/register/**",
             "/auth/google",
-            "/ws-logistics/**"
+            "/ws-logistics/**",
+            "/payments/iyzico/callback"
 
     };
 
