@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import java.util.Map;
 
 @RestController
 @MessageMapping("/chat")
@@ -22,7 +23,13 @@ public class ChatController {
     private final SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/send")
-    public void sendMessage(@Valid @Payload ChatMessageDto chatMessageDto, Principal principal) {
+    public void sendMessage(@Valid @Payload Map<String, Object> rawMessage, ChatMessageDto chatMessageDto, Principal principal) {
+        System.out.println("DEBUG: Gelen recipientId: " + chatMessageDto.getRecipientId());
+        System.out.println("Gelen ham veri: " + rawMessage);
+        // Eğer veri geliyorsa, burada "recipientId" anahtarını kontrol edebiliriz
+        if (rawMessage.get("recipientId") == null) {
+            System.out.println("UYARI: recipientId boş geldi!");
+        }
         if (principal == null) {
             throw new AccessDeniedException("WebSocket bağlantısı doğrulanmadı");
         }

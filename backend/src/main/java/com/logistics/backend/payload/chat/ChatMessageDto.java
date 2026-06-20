@@ -1,5 +1,6 @@
 package com.logistics.backend.payload.chat;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ChatMessageDto {
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
@@ -23,6 +25,7 @@ public class ChatMessageDto {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long senderId;
 
+    @JsonProperty("recipientId")
     @NotNull(message = "Alıcı zorunludur")
     private Long recipientId;
 
