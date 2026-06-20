@@ -41,6 +41,8 @@ public class LoadMatchMapper {
 
                 .matchScore(loadMatch.getMatchScore())
                 .status(loadMatch.getStatus())
+                .loadStatus(load.getStatus())
+                .routePlanStatus(routePlan.getStatus())
                 .note(loadMatch.getNote())
                 .createdAt(loadMatch.getCreatedAt())
 

@@ -3,7 +3,9 @@ package com.logistics.backend.controller.business;
 import com.logistics.backend.payload.response.LoadMatchResponse;
 import com.logistics.backend.payload.response.MatchDebugResponse;
 import com.logistics.backend.service.business.LoadMatchingService;
+import com.logistics.backend.security.service.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -50,6 +52,26 @@ public class LoadMatchController {
     @PatchMapping("/{matchId}/reject")
     public LoadMatchResponse rejectMatch(@PathVariable Long matchId) {
         return loadMatchingService.rejectMatch(matchId);
+    }
+
+
+    @PatchMapping("/{matchId}/start-transit")
+    @PreAuthorize("hasAuthority('DRIVER')")
+    public LoadMatchResponse startTransit(
+            @PathVariable Long matchId,
+            @AuthenticationPrincipal UserDetailsImpl currentUser
+    ) {
+        return loadMatchingService.startTransit(matchId, currentUser.getId());
+    }
+
+
+    @PatchMapping("/{matchId}/complete-delivery")
+    @PreAuthorize("hasAuthority('DRIVER')")
+    public LoadMatchResponse completeDelivery(
+            @PathVariable Long matchId,
+            @AuthenticationPrincipal UserDetailsImpl currentUser
+    ) {
+        return loadMatchingService.completeDelivery(matchId, currentUser.getId());
     }
 
     @GetMapping("/loads/{loadId}/debug")

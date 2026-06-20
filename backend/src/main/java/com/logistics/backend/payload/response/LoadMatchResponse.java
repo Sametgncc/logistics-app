@@ -1,6 +1,8 @@
 package com.logistics.backend.payload.response;
 
 import com.logistics.backend.entity.enums.MatchStatus;
+import com.logistics.backend.entity.enums.LoadStatus;
+import com.logistics.backend.entity.enums.RoutePlanStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -34,6 +36,8 @@ public class LoadMatchResponse {
 
     private BigDecimal matchScore;
     private MatchStatus status;
+    private LoadStatus loadStatus;
+    private RoutePlanStatus routePlanStatus;
     private String note;
     private LocalDateTime createdAt;
 

@@ -114,12 +114,29 @@ public class LoadMatchingService {
         if (match.getStatus() != MatchStatus.PENDING) {
             throw new BadRequestException("Only PENDING matches can be accepted");
         }
-        match.setStatus(MatchStatus.ACCEPTED);
 
         Load load = match.getLoad();
+        RoutePlan routePlan = match.getRoutePlan();
+
+        if (load.getStatus() != LoadStatus.OPEN) {
+            throw new BadRequestException("Only OPEN loads can be accepted");
+        }
+
+        if (routePlan.getStatus() != RoutePlanStatus.OPEN) {
+            throw new BadRequestException("Only OPEN route plans can accept loads");
+        }
+
+        if (loadMatchRepository.existsByLoadIdAndStatus(load.getId(), MatchStatus.ACCEPTED)) {
+            throw new BadRequestException("Load already has an accepted route plan");
+        }
+
+        if (!hasEnoughCapacity(routePlan, load)) {
+            throw new BadRequestException("Route plan no longer has enough available capacity");
+        }
+
+        match.setStatus(MatchStatus.ACCEPTED);
         load.setStatus(LoadStatus.MATCHED);
 
-        RoutePlan routePlan = match.getRoutePlan();
         routePlan.setAvailableCapacityKg(routePlan.getAvailableCapacityKg().subtract(load.getWeightKg()));
         routePlan.setAvailableCapacityVolumeM3(routePlan.getAvailableCapacityVolumeM3().subtract(load.getVolumeM3()));
 
@@ -129,6 +146,59 @@ public class LoadMatchingService {
         }
 
         return loadMatchMapper.toResponse(loadMatchRepository.save(match));
+    }
+
+    @Transactional
+    public LoadMatchResponse startTransit(Long matchId, Long driverId) {
+        LoadMatch match = getAcceptedMatchOwnedByDriver(matchId, driverId);
+        Load load = match.getLoad();
+        RoutePlan routePlan = match.getRoutePlan();
+
+        if (load.getStatus() != LoadStatus.MATCHED) {
+            throw new BadRequestException("Only MATCHED loads can start transit");
+        }
+
+        if (routePlan.getStatus() != RoutePlanStatus.OPEN &&
+                routePlan.getStatus() != RoutePlanStatus.FULL &&
+                routePlan.getStatus() != RoutePlanStatus.IN_PROGRESS) {
+            throw new BadRequestException("Route plan cannot start transit in its current status");
+        }
+
+        load.setStatus(LoadStatus.IN_TRANSIT);
+        routePlan.setStatus(RoutePlanStatus.IN_PROGRESS);
+
+        loadRepository.save(load);
+        routePlanRepository.save(routePlan);
+
+        return loadMatchMapper.toResponse(match);
+    }
+
+    @Transactional
+    public LoadMatchResponse completeDelivery(Long matchId, Long driverId) {
+        LoadMatch match = getAcceptedMatchOwnedByDriver(matchId, driverId);
+        Load load = match.getLoad();
+        RoutePlan routePlan = match.getRoutePlan();
+
+        if (load.getStatus() != LoadStatus.IN_TRANSIT) {
+            throw new BadRequestException("Only IN_TRANSIT loads can be delivered");
+        }
+
+        load.setStatus(LoadStatus.DELIVERED);
+        match.setStatus(MatchStatus.COMPLETED);
+
+        loadRepository.save(load);
+        loadMatchRepository.save(match);
+
+        boolean hasRemainingAcceptedLoads = loadMatchRepository.findByRoutePlanId(routePlan.getId())
+                .stream()
+                .anyMatch(routeMatch -> routeMatch.getStatus() == MatchStatus.ACCEPTED);
+
+        if (!hasRemainingAcceptedLoads) {
+            routePlan.setStatus(RoutePlanStatus.COMPLETED);
+            routePlanRepository.save(routePlan);
+        }
+
+        return loadMatchMapper.toResponse(match);
     }
 
     public LoadMatchResponse rejectMatch(Long matchId) {
@@ -152,6 +222,22 @@ public class LoadMatchingService {
                     notifyMatchCreated(savedMatch);
                     return savedMatch;
                 });
+    }
+
+    private LoadMatch getAcceptedMatchOwnedByDriver(Long matchId, Long driverId) {
+        LoadMatch match = loadMatchRepository.findById(matchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Match not found with id: " + matchId));
+
+        if (match.getStatus() != MatchStatus.ACCEPTED) {
+            throw new BadRequestException("Only ACCEPTED matches can be updated during delivery");
+        }
+
+        Long routeDriverId = match.getRoutePlan().getDriver().getId();
+        if (!routeDriverId.equals(driverId)) {
+            throw new BadRequestException("Only the matched route plan's driver can update delivery status");
+        }
+
+        return match;
     }
 
     private LoadMatch buildMatch(Load load, RoutePlan routePlan) {
