@@ -305,6 +305,8 @@ public class TransportOfferService {
         Long matchId = getAcceptedMatchIdForOffer(offer);
 
         loadMatchingService.startTransit(matchId, driverId);
+        offer.setStatus(OfferStatus.IN_TRANSIT);
+        transportOfferRepository.save(offer);
         return transportOfferMapper.toResponse(offer);
     }
 
@@ -314,7 +316,8 @@ public class TransportOfferService {
         Long matchId = getAcceptedMatchIdForOffer(offer);
 
         loadMatchingService.completeDelivery(matchId, driverId);
-        markSettlementPending(offer.getId());
+        offer.setStatus(OfferStatus.COMPLETED);
+        transportOfferRepository.save(offer);
         return transportOfferMapper.toResponse(offer);
     }
 
@@ -358,8 +361,8 @@ public class TransportOfferService {
     private TransportOffer getAcceptedOfferOwnedByDriver(Long offerId, Long driverId) {
         TransportOffer offer = findOfferById(offerId);
 
-        if (offer.getStatus() != OfferStatus.ACCEPTED) {
-            throw new BadRequestException("Only ACCEPTED offers can be updated during delivery");
+        if (offer.getStatus() != OfferStatus.ACCEPTED && offer.getStatus() != OfferStatus.IN_TRANSIT) {
+            throw new BadRequestException("Bu işlem için teklifin ACCEPTED (Kabul Edilmiş) veya IN_TRANSIT (Yolda) olması gerekir.");
         }
 
         if (!offer.getDriver().getId().equals(driverId)) {
@@ -381,20 +384,11 @@ public class TransportOfferService {
 
     private void requirePaidPayment(Long offerId) {
         Payment payment = paymentRepository.findByTransportOfferId(offerId)
-                .orElseThrow(() -> new BadRequestException("Payment must be completed before starting transit"));
+                .orElseThrow(() -> new BadRequestException("Bu teklif için henüz ödeme işlemi başlatılmamış."));
 
         if (payment.getStatus() != PaymentStatus.PAID) {
-            throw new BadRequestException("Payment must be PAID before starting transit");
+            throw new BadRequestException("Müşteri ödemeyi tamamlamadan sürüşü başlatamazsınız.");
         }
-    }
-
-    private void markSettlementPending(Long offerId) {
-        paymentRepository.findByTransportOfferId(offerId)
-                .filter(payment -> payment.getStatus() == PaymentStatus.PAID)
-                .ifPresent(payment -> {
-                    payment.setStatus(PaymentStatus.SETTLEMENT_PENDING);
-                    paymentRepository.save(payment);
-                });
     }
 
     private void rejectOtherPendingOffersForSameLoad(Long loadId, Long acceptedOfferId) {
@@ -478,14 +472,24 @@ public class TransportOfferService {
     }
 
     public List<TransportOfferResponse> getRecentAcceptedOffersAsCustomer(Long customerId) {
-        return transportOfferRepository.findByCustomerIdAndStatusOrderByRespondedAtDesc(customerId, OfferStatus.ACCEPTED)
+        List<OfferStatus> activeStatuses = List.of(
+                OfferStatus.ACCEPTED,
+                OfferStatus.IN_TRANSIT,
+                OfferStatus.COMPLETED
+        );
+        return transportOfferRepository.findByCustomerIdAndStatusInOrderByRespondedAtDesc(customerId, activeStatuses)
                 .stream()
                 .map(transportOfferMapper::toResponse)
                 .toList();
     }
 
     public List<TransportOfferResponse> getRecentAcceptedOffersAsDriver(Long driverId) {
-        return transportOfferRepository.findByDriverIdAndStatusOrderByRespondedAtDesc(driverId, OfferStatus.ACCEPTED)
+        List<OfferStatus> activeStatuses = List.of(
+                OfferStatus.ACCEPTED,
+                OfferStatus.IN_TRANSIT,
+                OfferStatus.COMPLETED
+        );
+        return transportOfferRepository.findByDriverIdAndStatusInOrderByRespondedAtDesc(driverId, activeStatuses)
                 .stream()
                 .map(transportOfferMapper::toResponse)
                 .toList();

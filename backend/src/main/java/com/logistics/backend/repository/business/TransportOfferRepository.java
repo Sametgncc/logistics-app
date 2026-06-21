@@ -33,9 +33,14 @@ public interface TransportOfferRepository extends JpaRepository<TransportOffer, 
             OfferStatus status
     );
 
-    // Müşteri için kabul edilmiş işlemleri getir
-    List<TransportOffer> findByCustomerIdAndStatusOrderByRespondedAtDesc(Long customerId, OfferStatus status);
+    // GÜNCELLENDİ: Status -> StatusIn ve OfferStatus -> List<OfferStatus> yapıldı
+    // Müşteri için çoklu statüye göre işlemleri getir
+    List<TransportOffer> findByCustomerIdAndStatusInOrderByRespondedAtDesc(Long customerId, List<OfferStatus> statuses);
 
-    // Şoför/Nakliyeci için kabul edilmiş işlemleri getir
-    List<TransportOffer> findByDriverIdAndStatusOrderByRespondedAtDesc(Long driverId, OfferStatus status);
+    // GÜNCELLENDİ: Status -> StatusIn ve OfferStatus -> List<OfferStatus> yapıldı
+    // Şoför/Nakliyeci için çoklu statüye göre işlemleri getir
+    List<TransportOffer> findByDriverIdAndStatusInOrderByRespondedAtDesc(Long driverId, List<OfferStatus> statuses);
+
+    // Sürücünün sadece kendine ait olan spesifik bir teklifi bulması için
+    Optional<TransportOffer> findByIdAndDriverId(Long id, Long driverId);
 }
