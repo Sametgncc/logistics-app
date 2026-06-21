@@ -85,6 +85,24 @@ public class TransportOfferController {
         return transportOfferService.cancelOffer(offerId);
     }
 
+    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER') or authentication.principal.driverApproved == true")
+    @PatchMapping("/{offerId}/start-transit")
+    public TransportOfferResponse startTransit(
+            @PathVariable Long offerId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        return transportOfferService.startTransit(offerId, userDetails.getId());
+    }
+
+    @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER') or authentication.principal.driverApproved == true")
+    @PatchMapping("/{offerId}/complete-delivery")
+    public TransportOfferResponse completeDelivery(
+            @PathVariable Long offerId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        return transportOfferService.completeDelivery(offerId, userDetails.getId());
+    }
+
     @PreAuthorize("hasAnyAuthority('DRIVER', 'ROLE_DRIVER')")
     @GetMapping("/my-offers/driver")
     public List<TransportOfferResponse> getMyOffersAsDriver(@AuthenticationPrincipal UserDetailsImpl userDetails) {

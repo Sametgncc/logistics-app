@@ -21,6 +21,7 @@ import com.logistics.backend.repository.business.VehicleRepository;
 import com.logistics.backend.repository.user.NotificationRepository;
 import com.logistics.backend.repository.user.UserRepository;
 import com.logistics.backend.payload.response.LoadMatchResponse;
+import com.logistics.backend.payload.response.TransportOfferResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -134,12 +135,22 @@ class DeliveryLifecycleIntegrationTest {
                 .createdAt(LocalDateTime.now())
                 .build());
 
-        transportOfferService.acceptOffer(offer.getId());
+        TransportOfferResponse accepted = transportOfferService.acceptOffer(offer.getId());
 
         assertEquals(MatchStatus.ACCEPTED,
                 loadMatchRepository.findById(match.getId()).orElseThrow().getStatus());
+        assertEquals(match.getId(), accepted.getLoadMatchId());
+        assertEquals(LoadStatus.MATCHED, accepted.getLoadStatus());
         assertTrue(loadMatchingService.getMatchesByLoadId(load.getId()).isEmpty());
         assertTrue(loadMatchingService.getMatchesByRoutePlanId(routePlan.getId()).isEmpty());
+
+        TransportOfferResponse started = transportOfferService.startTransit(offer.getId(), driver.getId());
+        assertEquals(LoadStatus.IN_TRANSIT, started.getLoadStatus());
+        assertEquals(RoutePlanStatus.IN_PROGRESS, started.getRoutePlanStatus());
+
+        TransportOfferResponse completed = transportOfferService.completeDelivery(offer.getId(), driver.getId());
+        assertEquals(LoadStatus.DELIVERED, completed.getLoadStatus());
+        assertEquals(RoutePlanStatus.COMPLETED, completed.getRoutePlanStatus());
     }
 
     private DeliveryFixture createFixture() {

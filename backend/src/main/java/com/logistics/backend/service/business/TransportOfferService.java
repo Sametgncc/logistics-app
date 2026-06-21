@@ -42,6 +42,7 @@ public class TransportOfferService {
     private final RoutePlanRepository routePlanRepository;
     private final UserRepository userRepository;
     private final TransportOfferMapper transportOfferMapper;
+    private final LoadMatchingService loadMatchingService;
     private final NotificationService notificationService;
 
     @Transactional
@@ -293,6 +294,24 @@ public class TransportOfferService {
                 });
     }
 
+    @Transactional
+    public TransportOfferResponse startTransit(Long offerId, Long driverId) {
+        TransportOffer offer = getAcceptedOfferOwnedByDriver(offerId, driverId);
+        Long matchId = getAcceptedMatchIdForOffer(offer);
+
+        loadMatchingService.startTransit(matchId, driverId);
+        return transportOfferMapper.toResponse(offer);
+    }
+
+    @Transactional
+    public TransportOfferResponse completeDelivery(Long offerId, Long driverId) {
+        TransportOffer offer = getAcceptedOfferOwnedByDriver(offerId, driverId);
+        Long matchId = getAcceptedMatchIdForOffer(offer);
+
+        loadMatchingService.completeDelivery(matchId, driverId);
+        return transportOfferMapper.toResponse(offer);
+    }
+
     public TransportOfferResponse rejectOffer(Long offerId) {
         TransportOffer offer = findOfferById(offerId);
 
@@ -328,6 +347,30 @@ public class TransportOfferService {
     private TransportOffer findOfferById(Long offerId) {
         return transportOfferRepository.findById(offerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found with id: " + offerId));
+    }
+
+    private TransportOffer getAcceptedOfferOwnedByDriver(Long offerId, Long driverId) {
+        TransportOffer offer = findOfferById(offerId);
+
+        if (offer.getStatus() != OfferStatus.ACCEPTED) {
+            throw new BadRequestException("Only ACCEPTED offers can be updated during delivery");
+        }
+
+        if (!offer.getDriver().getId().equals(driverId)) {
+            throw new BadRequestException("Only the accepted offer's driver can update delivery status");
+        }
+
+        return offer;
+    }
+
+    private Long getAcceptedMatchIdForOffer(TransportOffer offer) {
+        return loadMatchRepository.findByLoadIdAndRoutePlanId(
+                        offer.getLoad().getId(),
+                        offer.getRoutePlan().getId()
+                )
+                .filter(match -> match.getStatus() == MatchStatus.ACCEPTED)
+                .map(LoadMatch::getId)
+                .orElseThrow(() -> new BadRequestException("Accepted offer does not have an active load match"));
     }
 
     private void rejectOtherPendingOffersForSameLoad(Long loadId, Long acceptedOfferId) {

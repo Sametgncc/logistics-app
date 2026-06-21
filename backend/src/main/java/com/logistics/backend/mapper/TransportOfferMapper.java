@@ -1,13 +1,19 @@
 package com.logistics.backend.mapper;
 
 import com.logistics.backend.entity.business.Load;
+import com.logistics.backend.entity.business.LoadMatch;
 import com.logistics.backend.entity.business.RoutePlan;
 import com.logistics.backend.entity.business.TransportOffer;
 import com.logistics.backend.payload.response.TransportOfferResponse;
+import com.logistics.backend.repository.business.LoadMatchRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class TransportOfferMapper {
+
+    private final LoadMatchRepository loadMatchRepository;
 
     public TransportOfferResponse toResponse(TransportOffer offer) {
         if (offer == null) {
@@ -16,17 +22,23 @@ public class TransportOfferMapper {
 
         Load load = offer.getLoad();
         RoutePlan routePlan = offer.getRoutePlan();
+        Long loadMatchId = loadMatchRepository.findByLoadIdAndRoutePlanId(load.getId(), routePlan.getId())
+                .map(LoadMatch::getId)
+                .orElse(null);
 
         return TransportOfferResponse.builder()
                 .id(offer.getId())
 
                 .loadId(load.getId())
+                .loadMatchId(loadMatchId)
                 .pickupCity(load.getPickupCity())
                 .deliveryCity(load.getDeliveryCity())
+                .loadStatus(load.getStatus())
 
                 .routePlanId(routePlan.getId())
                 .originCity(routePlan.getOriginCity())
                 .destinationCity(routePlan.getDestinationCity())
+                .routePlanStatus(routePlan.getStatus())
 
                 .driverId(offer.getDriver().getId())
                 .driverName(offer.getDriver().getName())

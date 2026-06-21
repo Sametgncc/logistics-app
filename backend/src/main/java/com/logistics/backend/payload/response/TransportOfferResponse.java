@@ -2,6 +2,8 @@ package com.logistics.backend.payload.response;
 
 import com.logistics.backend.entity.enums.OfferDirection;
 import com.logistics.backend.entity.enums.OfferStatus;
+import com.logistics.backend.entity.enums.LoadStatus;
+import com.logistics.backend.entity.enums.RoutePlanStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -15,12 +17,15 @@ public class TransportOfferResponse {
     private Long id;
 
     private Long loadId;
+    private Long loadMatchId;
     private String pickupCity;
     private String deliveryCity;
+    private LoadStatus loadStatus;
 
     private Long routePlanId;
     private String originCity;
     private String destinationCity;
+    private RoutePlanStatus routePlanStatus;
 
     private Long driverId;
     private String driverName;
