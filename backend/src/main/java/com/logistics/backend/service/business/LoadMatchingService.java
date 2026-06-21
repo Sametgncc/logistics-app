@@ -90,7 +90,7 @@ public class LoadMatchingService {
         loadRepository.findById(loadId)
                 .orElseThrow(() -> new ResourceNotFoundException("Load not found with id: " + loadId));
 
-        return loadMatchRepository.findByLoadId(loadId)
+        return loadMatchRepository.findByLoadIdAndStatus(loadId, MatchStatus.PENDING)
                 .stream()
                 .map(loadMatchMapper::toResponse)
                 .toList();
@@ -100,7 +100,7 @@ public class LoadMatchingService {
         routePlanRepository.findById(routePlanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Route plan not found with id: " + routePlanId));
 
-        return loadMatchRepository.findByRoutePlanId(routePlanId)
+        return loadMatchRepository.findByRoutePlanIdAndStatus(routePlanId, MatchStatus.PENDING)
                 .stream()
                 .map(loadMatchMapper::toResponse)
                 .toList();

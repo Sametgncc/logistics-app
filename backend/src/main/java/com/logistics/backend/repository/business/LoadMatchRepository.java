@@ -11,7 +11,11 @@ public interface LoadMatchRepository extends JpaRepository<LoadMatch, Long> {
 
     List<LoadMatch> findByLoadId(Long loadId);
 
+    List<LoadMatch> findByLoadIdAndStatus(Long loadId, MatchStatus status);
+
     List<LoadMatch> findByRoutePlanId(Long routePlanId);
+
+    List<LoadMatch> findByRoutePlanIdAndStatus(Long routePlanId, MatchStatus status);
 
     List<LoadMatch> findByStatus(MatchStatus status);
 

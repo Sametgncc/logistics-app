@@ -3,9 +3,12 @@ package com.logistics.backend.service.business;
 import com.logistics.backend.entity.business.Load;
 import com.logistics.backend.entity.business.LoadMatch;
 import com.logistics.backend.entity.business.RoutePlan;
+import com.logistics.backend.entity.business.TransportOffer;
 import com.logistics.backend.entity.business.Vehicle;
 import com.logistics.backend.entity.enums.LoadStatus;
 import com.logistics.backend.entity.enums.MatchStatus;
+import com.logistics.backend.entity.enums.OfferDirection;
+import com.logistics.backend.entity.enums.OfferStatus;
 import com.logistics.backend.entity.enums.RoutePlanStatus;
 import com.logistics.backend.entity.enums.VehicleType;
 import com.logistics.backend.entity.user.User;
@@ -13,7 +16,9 @@ import com.logistics.backend.exception.BadRequestException;
 import com.logistics.backend.repository.business.LoadMatchRepository;
 import com.logistics.backend.repository.business.LoadRepository;
 import com.logistics.backend.repository.business.RoutePlanRepository;
+import com.logistics.backend.repository.business.TransportOfferRepository;
 import com.logistics.backend.repository.business.VehicleRepository;
+import com.logistics.backend.repository.user.NotificationRepository;
 import com.logistics.backend.repository.user.UserRepository;
 import com.logistics.backend.payload.response.LoadMatchResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -27,6 +32,7 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -36,7 +42,13 @@ class DeliveryLifecycleIntegrationTest {
     private LoadMatchingService loadMatchingService;
 
     @Autowired
+    private TransportOfferService transportOfferService;
+
+    @Autowired
     private LoadMatchRepository loadMatchRepository;
+
+    @Autowired
+    private TransportOfferRepository transportOfferRepository;
 
     @Autowired
     private LoadRepository loadRepository;
@@ -50,8 +62,13 @@ class DeliveryLifecycleIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private NotificationRepository notificationRepository;
+
     @AfterEach
     void cleanUp() {
+        notificationRepository.deleteAll();
+        transportOfferRepository.deleteAll();
         loadMatchRepository.deleteAll();
         routePlanRepository.deleteAll();
         vehicleRepository.deleteAll();
@@ -89,50 +106,54 @@ class DeliveryLifecycleIntegrationTest {
                 loadMatchingService.startTransit(fixture.match().getId(), anotherDriver.getId()));
     }
 
+    @Test
+    void acceptingOfferAcceptsExistingMatchAndHidesItFromMatchingLists() {
+        User customer = userRepository.save(user("offer-customer@example.com"));
+        User driver = userRepository.save(user("offer-driver@example.com"));
+        Vehicle vehicle = vehicleRepository.save(vehicle(driver, "34-OFFER-01"));
+        LocalDateTime departure = LocalDateTime.now().plusDays(1);
+
+        RoutePlan routePlan = routePlanRepository.save(routePlan(driver, vehicle, departure));
+        Load load = loadRepository.save(load(customer, departure));
+        LoadMatch match = loadMatchRepository.save(LoadMatch.builder()
+                .load(load)
+                .routePlan(routePlan)
+                .status(MatchStatus.PENDING)
+                .matchScore(BigDecimal.valueOf(90))
+                .createdAt(LocalDateTime.now())
+                .build());
+        TransportOffer offer = transportOfferRepository.save(TransportOffer.builder()
+                .load(load)
+                .routePlan(routePlan)
+                .driver(driver)
+                .customer(customer)
+                .offeredBy(driver)
+                .direction(OfferDirection.DRIVER_TO_CUSTOMER)
+                .price(BigDecimal.valueOf(1_000))
+                .status(OfferStatus.PENDING)
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        transportOfferService.acceptOffer(offer.getId());
+
+        assertEquals(MatchStatus.ACCEPTED,
+                loadMatchRepository.findById(match.getId()).orElseThrow().getStatus());
+        assertTrue(loadMatchingService.getMatchesByLoadId(load.getId()).isEmpty());
+        assertTrue(loadMatchingService.getMatchesByRoutePlanId(routePlan.getId()).isEmpty());
+    }
+
     private DeliveryFixture createFixture() {
         User customer = userRepository.save(user("customer@example.com"));
         User driver = userRepository.save(user("driver@example.com"));
 
-        Vehicle vehicle = vehicleRepository.save(Vehicle.builder()
-                .owner(driver)
-                .plateNumber("34-TEST-01")
-                .vehicleType(VehicleType.TRUCK)
-                .capacityKg(BigDecimal.valueOf(1_000))
-                .capacityVolumeM3(BigDecimal.valueOf(100))
-                .active(true)
-                .build());
+        Vehicle vehicle = vehicleRepository.save(vehicle(driver, "34-TEST-01"));
 
         LocalDateTime now = LocalDateTime.now().plusDays(1);
-        RoutePlan routePlan = routePlanRepository.save(RoutePlan.builder()
-                .driver(driver)
-                .vehicle(vehicle)
-                .originCity("Istanbul")
-                .originLat(BigDecimal.valueOf(41.0082))
-                .originLng(BigDecimal.valueOf(28.9784))
-                .destinationCity("Ankara")
-                .destinationLat(BigDecimal.valueOf(39.9334))
-                .destinationLng(BigDecimal.valueOf(32.8597))
-                .departureTime(now)
-                .estimatedArrivalTime(now.plusHours(6))
-                .availableCapacityKg(BigDecimal.valueOf(500))
-                .availableCapacityVolumeM3(BigDecimal.valueOf(50))
-                .status(RoutePlanStatus.OPEN)
-                .build());
+        RoutePlan routePlan = routePlanRepository.save(routePlan(driver, vehicle, now));
 
-        Load load = loadRepository.save(Load.builder()
-                .customer(customer)
-                .pickupCity("Istanbul")
-                .pickupLat(BigDecimal.valueOf(41.0082))
-                .pickupLng(BigDecimal.valueOf(28.9784))
-                .deliveryCity("Ankara")
-                .deliveryLat(BigDecimal.valueOf(39.9334))
-                .deliveryLng(BigDecimal.valueOf(32.8597))
-                .weightKg(BigDecimal.valueOf(100))
-                .volumeM3(BigDecimal.valueOf(10))
-                .pickupTime(now)
-                .status(LoadStatus.MATCHED)
-                .createdAt(LocalDateTime.now())
-                .build());
+        Load load = loadRepository.save(load(customer, now));
+        load.setStatus(LoadStatus.MATCHED);
+        loadRepository.save(load);
 
         LoadMatch match = loadMatchRepository.save(LoadMatch.builder()
                 .load(load)
@@ -143,6 +164,52 @@ class DeliveryLifecycleIntegrationTest {
                 .build());
 
         return new DeliveryFixture(driver, routePlan, load, match);
+    }
+
+    private Vehicle vehicle(User driver, String plateNumber) {
+        return Vehicle.builder()
+                .owner(driver)
+                .plateNumber(plateNumber)
+                .vehicleType(VehicleType.TRUCK)
+                .capacityKg(BigDecimal.valueOf(1_000))
+                .capacityVolumeM3(BigDecimal.valueOf(100))
+                .active(true)
+                .build();
+    }
+
+    private RoutePlan routePlan(User driver, Vehicle vehicle, LocalDateTime departure) {
+        return RoutePlan.builder()
+                .driver(driver)
+                .vehicle(vehicle)
+                .originCity("Istanbul")
+                .originLat(BigDecimal.valueOf(41.0082))
+                .originLng(BigDecimal.valueOf(28.9784))
+                .destinationCity("Ankara")
+                .destinationLat(BigDecimal.valueOf(39.9334))
+                .destinationLng(BigDecimal.valueOf(32.8597))
+                .departureTime(departure)
+                .estimatedArrivalTime(departure.plusHours(6))
+                .availableCapacityKg(BigDecimal.valueOf(500))
+                .availableCapacityVolumeM3(BigDecimal.valueOf(50))
+                .status(RoutePlanStatus.OPEN)
+                .build();
+    }
+
+    private Load load(User customer, LocalDateTime pickupTime) {
+        return Load.builder()
+                .customer(customer)
+                .pickupCity("Istanbul")
+                .pickupLat(BigDecimal.valueOf(41.0082))
+                .pickupLng(BigDecimal.valueOf(28.9784))
+                .deliveryCity("Ankara")
+                .deliveryLat(BigDecimal.valueOf(39.9334))
+                .deliveryLng(BigDecimal.valueOf(32.8597))
+                .weightKg(BigDecimal.valueOf(100))
+                .volumeM3(BigDecimal.valueOf(10))
+                .pickupTime(pickupTime)
+                .status(LoadStatus.OPEN)
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
     private User user(String email) {

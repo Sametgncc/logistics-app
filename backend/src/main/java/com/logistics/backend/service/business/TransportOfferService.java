@@ -1,9 +1,11 @@
 package com.logistics.backend.service.business;
 
 import com.logistics.backend.entity.business.Load;
+import com.logistics.backend.entity.business.LoadMatch;
 import com.logistics.backend.entity.business.RoutePlan;
 import com.logistics.backend.entity.business.TransportOffer;
 import com.logistics.backend.entity.enums.LoadStatus;
+import com.logistics.backend.entity.enums.MatchStatus;
 import com.logistics.backend.entity.enums.NotificationType;
 import com.logistics.backend.entity.enums.OfferDirection;
 import com.logistics.backend.entity.enums.OfferStatus;
@@ -17,6 +19,7 @@ import com.logistics.backend.payload.request.CreateTransportOfferRequest;
 import com.logistics.backend.payload.request.CounterTransportOfferRequest;
 import com.logistics.backend.payload.response.TransportOfferResponse;
 import com.logistics.backend.repository.business.LoadRepository;
+import com.logistics.backend.repository.business.LoadMatchRepository;
 import com.logistics.backend.repository.business.RoutePlanRepository;
 import com.logistics.backend.repository.business.TransportOfferRepository;
 import com.logistics.backend.repository.user.UserRepository;
@@ -34,6 +37,7 @@ import java.util.List;
 public class TransportOfferService {
 
     private final TransportOfferRepository transportOfferRepository;
+    private final LoadMatchRepository loadMatchRepository;
     private final LoadRepository loadRepository;
     private final RoutePlanRepository routePlanRepository;
     private final UserRepository userRepository;
@@ -242,6 +246,7 @@ public class TransportOfferService {
         throw new BadRequestException("Only offer participants can create counter offers");
     }
 
+    @Transactional
     public TransportOfferResponse acceptOffer(Long offerId) {
         TransportOffer offer = findOfferById(offerId);
 
@@ -264,6 +269,8 @@ public class TransportOfferService {
             routePlan.setStatus(RoutePlanStatus.FULL);
         }
 
+        acceptMatchingLoadMatch(offer);
+
         rejectOtherPendingOffersForSameLoad(
                 offer.getLoad().getId(),
                 offer.getId()
@@ -273,6 +280,17 @@ public class TransportOfferService {
         notifyOfferOwner(savedOffer, NotificationType.TRANSPORT_OFFER_ACCEPTED, "Offer accepted", "Your transport offer was accepted.");
 
         return transportOfferMapper.toResponse(savedOffer);
+    }
+
+    private void acceptMatchingLoadMatch(TransportOffer offer) {
+        loadMatchRepository.findByLoadIdAndRoutePlanId(
+                        offer.getLoad().getId(),
+                        offer.getRoutePlan().getId()
+                )
+                .ifPresent(match -> {
+                    match.setStatus(MatchStatus.ACCEPTED);
+                    loadMatchRepository.save(match);
+                });
     }
 
     public TransportOfferResponse rejectOffer(Long offerId) {
