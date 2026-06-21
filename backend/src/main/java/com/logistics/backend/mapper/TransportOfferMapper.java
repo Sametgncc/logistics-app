@@ -2,10 +2,12 @@ package com.logistics.backend.mapper;
 
 import com.logistics.backend.entity.business.Load;
 import com.logistics.backend.entity.business.LoadMatch;
+import com.logistics.backend.entity.business.Payment;
 import com.logistics.backend.entity.business.RoutePlan;
 import com.logistics.backend.entity.business.TransportOffer;
 import com.logistics.backend.payload.response.TransportOfferResponse;
 import com.logistics.backend.repository.business.LoadMatchRepository;
+import com.logistics.backend.repository.business.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class TransportOfferMapper {
 
     private final LoadMatchRepository loadMatchRepository;
+    private final PaymentRepository paymentRepository;
 
     public TransportOfferResponse toResponse(TransportOffer offer) {
         if (offer == null) {
@@ -24,6 +27,9 @@ public class TransportOfferMapper {
         RoutePlan routePlan = offer.getRoutePlan();
         Long loadMatchId = loadMatchRepository.findByLoadIdAndRoutePlanId(load.getId(), routePlan.getId())
                 .map(LoadMatch::getId)
+                .orElse(null);
+        var paymentStatus = paymentRepository.findByTransportOfferId(offer.getId())
+                .map(Payment::getStatus)
                 .orElse(null);
 
         return TransportOfferResponse.builder()
@@ -55,6 +61,7 @@ public class TransportOfferMapper {
                 .price(offer.getPrice())
                 .message(offer.getMessage())
                 .status(offer.getStatus())
+                .paymentStatus(paymentStatus)
                 .createdAt(offer.getCreatedAt())
                 .respondedAt(offer.getRespondedAt())
                 .build();

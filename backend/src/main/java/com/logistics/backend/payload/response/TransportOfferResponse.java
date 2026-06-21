@@ -3,6 +3,7 @@ package com.logistics.backend.payload.response;
 import com.logistics.backend.entity.enums.OfferDirection;
 import com.logistics.backend.entity.enums.OfferStatus;
 import com.logistics.backend.entity.enums.LoadStatus;
+import com.logistics.backend.entity.enums.PaymentStatus;
 import com.logistics.backend.entity.enums.RoutePlanStatus;
 import lombok.Builder;
 import lombok.Data;
@@ -43,6 +44,7 @@ public class TransportOfferResponse {
     private String message;
 
     private OfferStatus status;
+    private PaymentStatus paymentStatus;
     private LocalDateTime createdAt;
     private LocalDateTime respondedAt;
 }

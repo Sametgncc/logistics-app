@@ -2,6 +2,7 @@ package com.logistics.backend.service.business;
 
 import com.logistics.backend.entity.business.Load;
 import com.logistics.backend.entity.business.LoadMatch;
+import com.logistics.backend.entity.business.Payment;
 import com.logistics.backend.entity.business.RoutePlan;
 import com.logistics.backend.entity.business.TransportOffer;
 import com.logistics.backend.entity.enums.LoadStatus;
@@ -9,6 +10,7 @@ import com.logistics.backend.entity.enums.MatchStatus;
 import com.logistics.backend.entity.enums.NotificationType;
 import com.logistics.backend.entity.enums.OfferDirection;
 import com.logistics.backend.entity.enums.OfferStatus;
+import com.logistics.backend.entity.enums.PaymentStatus;
 import com.logistics.backend.entity.enums.Role;
 import com.logistics.backend.entity.enums.RoutePlanStatus;
 import com.logistics.backend.entity.user.User;
@@ -20,6 +22,7 @@ import com.logistics.backend.payload.request.CounterTransportOfferRequest;
 import com.logistics.backend.payload.response.TransportOfferResponse;
 import com.logistics.backend.repository.business.LoadRepository;
 import com.logistics.backend.repository.business.LoadMatchRepository;
+import com.logistics.backend.repository.business.PaymentRepository;
 import com.logistics.backend.repository.business.RoutePlanRepository;
 import com.logistics.backend.repository.business.TransportOfferRepository;
 import com.logistics.backend.repository.user.UserRepository;
@@ -38,6 +41,7 @@ public class TransportOfferService {
 
     private final TransportOfferRepository transportOfferRepository;
     private final LoadMatchRepository loadMatchRepository;
+    private final PaymentRepository paymentRepository;
     private final LoadRepository loadRepository;
     private final RoutePlanRepository routePlanRepository;
     private final UserRepository userRepository;
@@ -297,6 +301,7 @@ public class TransportOfferService {
     @Transactional
     public TransportOfferResponse startTransit(Long offerId, Long driverId) {
         TransportOffer offer = getAcceptedOfferOwnedByDriver(offerId, driverId);
+        requirePaidPayment(offer.getId());
         Long matchId = getAcceptedMatchIdForOffer(offer);
 
         loadMatchingService.startTransit(matchId, driverId);
@@ -309,6 +314,7 @@ public class TransportOfferService {
         Long matchId = getAcceptedMatchIdForOffer(offer);
 
         loadMatchingService.completeDelivery(matchId, driverId);
+        markSettlementPending(offer.getId());
         return transportOfferMapper.toResponse(offer);
     }
 
@@ -371,6 +377,24 @@ public class TransportOfferService {
                 .filter(match -> match.getStatus() == MatchStatus.ACCEPTED)
                 .map(LoadMatch::getId)
                 .orElseThrow(() -> new BadRequestException("Accepted offer does not have an active load match"));
+    }
+
+    private void requirePaidPayment(Long offerId) {
+        Payment payment = paymentRepository.findByTransportOfferId(offerId)
+                .orElseThrow(() -> new BadRequestException("Payment must be completed before starting transit"));
+
+        if (payment.getStatus() != PaymentStatus.PAID) {
+            throw new BadRequestException("Payment must be PAID before starting transit");
+        }
+    }
+
+    private void markSettlementPending(Long offerId) {
+        paymentRepository.findByTransportOfferId(offerId)
+                .filter(payment -> payment.getStatus() == PaymentStatus.PAID)
+                .ifPresent(payment -> {
+                    payment.setStatus(PaymentStatus.SETTLEMENT_PENDING);
+                    paymentRepository.save(payment);
+                });
     }
 
     private void rejectOtherPendingOffersForSameLoad(Long loadId, Long acceptedOfferId) {

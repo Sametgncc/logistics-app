@@ -2,6 +2,7 @@ package com.logistics.backend.service.business;
 
 import com.logistics.backend.entity.business.Load;
 import com.logistics.backend.entity.business.LoadMatch;
+import com.logistics.backend.entity.business.Payment;
 import com.logistics.backend.entity.business.RoutePlan;
 import com.logistics.backend.entity.business.TransportOffer;
 import com.logistics.backend.entity.business.Vehicle;
@@ -9,12 +10,14 @@ import com.logistics.backend.entity.enums.LoadStatus;
 import com.logistics.backend.entity.enums.MatchStatus;
 import com.logistics.backend.entity.enums.OfferDirection;
 import com.logistics.backend.entity.enums.OfferStatus;
+import com.logistics.backend.entity.enums.PaymentStatus;
 import com.logistics.backend.entity.enums.RoutePlanStatus;
 import com.logistics.backend.entity.enums.VehicleType;
 import com.logistics.backend.entity.user.User;
 import com.logistics.backend.exception.BadRequestException;
 import com.logistics.backend.repository.business.LoadMatchRepository;
 import com.logistics.backend.repository.business.LoadRepository;
+import com.logistics.backend.repository.business.PaymentRepository;
 import com.logistics.backend.repository.business.RoutePlanRepository;
 import com.logistics.backend.repository.business.TransportOfferRepository;
 import com.logistics.backend.repository.business.VehicleRepository;
@@ -52,6 +55,9 @@ class DeliveryLifecycleIntegrationTest {
     private TransportOfferRepository transportOfferRepository;
 
     @Autowired
+    private PaymentRepository paymentRepository;
+
+    @Autowired
     private LoadRepository loadRepository;
 
     @Autowired
@@ -69,6 +75,7 @@ class DeliveryLifecycleIntegrationTest {
     @AfterEach
     void cleanUp() {
         notificationRepository.deleteAll();
+        paymentRepository.deleteAll();
         transportOfferRepository.deleteAll();
         loadMatchRepository.deleteAll();
         routePlanRepository.deleteAll();
@@ -144,13 +151,26 @@ class DeliveryLifecycleIntegrationTest {
         assertTrue(loadMatchingService.getMatchesByLoadId(load.getId()).isEmpty());
         assertTrue(loadMatchingService.getMatchesByRoutePlanId(routePlan.getId()).isEmpty());
 
+        assertThrows(BadRequestException.class, () -> transportOfferService.startTransit(offer.getId(), driver.getId()));
+        paymentRepository.save(Payment.builder()
+                .transportOffer(offer)
+                .amount(offer.getPrice())
+                .currency("TRY")
+                .status(PaymentStatus.PAID)
+                .iyzicoToken("payment-token-" + offer.getId())
+                .conversationId("offer-payment-" + offer.getId())
+                .createdAt(LocalDateTime.now())
+                .build());
+
         TransportOfferResponse started = transportOfferService.startTransit(offer.getId(), driver.getId());
         assertEquals(LoadStatus.IN_TRANSIT, started.getLoadStatus());
         assertEquals(RoutePlanStatus.IN_PROGRESS, started.getRoutePlanStatus());
+        assertEquals(PaymentStatus.PAID, started.getPaymentStatus());
 
         TransportOfferResponse completed = transportOfferService.completeDelivery(offer.getId(), driver.getId());
         assertEquals(LoadStatus.DELIVERED, completed.getLoadStatus());
         assertEquals(RoutePlanStatus.COMPLETED, completed.getRoutePlanStatus());
+        assertEquals(PaymentStatus.SETTLEMENT_PENDING, completed.getPaymentStatus());
     }
 
     private DeliveryFixture createFixture() {

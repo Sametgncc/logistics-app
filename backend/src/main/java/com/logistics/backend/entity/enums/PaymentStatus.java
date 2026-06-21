@@ -3,5 +3,6 @@ package com.logistics.backend.entity.enums;
 public enum PaymentStatus {
     PENDING,
     PAID,
-    FAILED
+    FAILED,
+    SETTLEMENT_PENDING
 }
