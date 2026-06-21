@@ -3,12 +3,17 @@ package com.logistics.backend.controller.business;
 
 import com.logistics.backend.payload.request.CreateRoutePlanRequest;
 import com.logistics.backend.payload.request.UpdateRoutePlanRequest;
+import com.logistics.backend.payload.request.UpdateDriverLocationRequest;
+import com.logistics.backend.payload.response.DriverLocationResponse;
 import com.logistics.backend.payload.response.RoutePlanResponse;
+import com.logistics.backend.security.service.UserDetailsImpl;
+import com.logistics.backend.service.business.DriverTrackingService;
 import com.logistics.backend.service.business.RoutePlanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +24,7 @@ import java.util.List;
 public class RoutePlanController {
 
     private final RoutePlanService routePlanService;
+    private final DriverTrackingService driverTrackingService;
 
 
     @PreAuthorize("(authentication.principal.driverApproved == true)")
@@ -36,6 +42,16 @@ public class RoutePlanController {
     @GetMapping("/{id}")
     public RoutePlanResponse getRoutePlanById(@PathVariable Long id) {
         return routePlanService.getRoutePlanById(id);
+    }
+
+    @PostMapping("/{routePlanId}/location")
+    @PreAuthorize("hasAuthority('DRIVER') or authentication.principal.driverApproved == true")
+    public DriverLocationResponse updateDriverLocation(
+            @PathVariable Long routePlanId,
+            @Valid @RequestBody UpdateDriverLocationRequest request,
+            @AuthenticationPrincipal UserDetailsImpl currentUser
+    ) {
+        return driverTrackingService.recordLocation(routePlanId, currentUser.getId(), request);
     }
 
     @GetMapping

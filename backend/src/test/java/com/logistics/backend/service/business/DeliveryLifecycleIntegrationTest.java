@@ -14,20 +14,26 @@ import com.logistics.backend.entity.enums.VehicleType;
 import com.logistics.backend.entity.user.User;
 import com.logistics.backend.exception.BadRequestException;
 import com.logistics.backend.repository.business.LoadMatchRepository;
+import com.logistics.backend.repository.business.DriverLocationRepository;
 import com.logistics.backend.repository.business.LoadRepository;
 import com.logistics.backend.repository.business.RoutePlanRepository;
 import com.logistics.backend.repository.business.TransportOfferRepository;
 import com.logistics.backend.repository.business.VehicleRepository;
 import com.logistics.backend.repository.user.NotificationRepository;
 import com.logistics.backend.repository.user.UserRepository;
+import com.logistics.backend.payload.request.UpdateDriverLocationRequest;
+import com.logistics.backend.payload.response.DriverLocationResponse;
 import com.logistics.backend.payload.response.LoadMatchResponse;
+import com.logistics.backend.payload.response.LoadTrackingResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -45,7 +51,13 @@ class DeliveryLifecycleIntegrationTest {
     private TransportOfferService transportOfferService;
 
     @Autowired
+    private DriverTrackingService driverTrackingService;
+
+    @Autowired
     private LoadMatchRepository loadMatchRepository;
+
+    @Autowired
+    private DriverLocationRepository driverLocationRepository;
 
     @Autowired
     private TransportOfferRepository transportOfferRepository;
@@ -69,6 +81,7 @@ class DeliveryLifecycleIntegrationTest {
     void cleanUp() {
         notificationRepository.deleteAll();
         transportOfferRepository.deleteAll();
+        driverLocationRepository.deleteAll();
         loadMatchRepository.deleteAll();
         routePlanRepository.deleteAll();
         vehicleRepository.deleteAll();
@@ -138,8 +151,43 @@ class DeliveryLifecycleIntegrationTest {
 
         assertEquals(MatchStatus.ACCEPTED,
                 loadMatchRepository.findById(match.getId()).orElseThrow().getStatus());
+        assertEquals(match.getId(), loadMatchingService.getAcceptedMatchForLoad(load.getId(), driver.getId()).getId());
         assertTrue(loadMatchingService.getMatchesByLoadId(load.getId()).isEmpty());
         assertTrue(loadMatchingService.getMatchesByRoutePlanId(routePlan.getId()).isEmpty());
+    }
+
+    @Test
+    void customerCanReadLatestLocationOnlyWhileOwnLoadIsInTransit() {
+        DeliveryFixture fixture = createFixture();
+        loadMatchingService.startTransit(fixture.match().getId(), fixture.driver().getId());
+
+        DriverLocationResponse savedLocation = driverTrackingService.recordLocation(
+                fixture.routePlan().getId(),
+                fixture.driver().getId(),
+                UpdateDriverLocationRequest.builder()
+                        .latitude(BigDecimal.valueOf(40.9876543))
+                        .longitude(BigDecimal.valueOf(29.1234567))
+                        .accuracyMeters(BigDecimal.valueOf(8))
+                        .speedKph(BigDecimal.valueOf(65))
+                        .headingDegrees(BigDecimal.valueOf(135))
+                        .capturedAt(Instant.now())
+                        .build()
+        );
+
+        LoadTrackingResponse tracking = driverTrackingService.getLatestLocationForLoad(
+                fixture.load().getId(),
+                fixture.load().getCustomer().getId()
+        );
+
+        assertEquals(fixture.routePlan().getId(), savedLocation.getRoutePlanId());
+        assertEquals(fixture.load().getId(), tracking.getLoadId());
+        assertEquals(BigDecimal.valueOf(40.9876543), tracking.getLatitude());
+        assertEquals(BigDecimal.valueOf(29.1234567), tracking.getLongitude());
+        assertEquals(0, BigDecimal.valueOf(65).compareTo(tracking.getSpeedKph()));
+
+        User anotherCustomer = userRepository.save(user("tracking-outsider@example.com"));
+        assertThrows(AccessDeniedException.class, () -> driverTrackingService.getLatestLocationForLoad(
+                fixture.load().getId(), anotherCustomer.getId()));
     }
 
     private DeliveryFixture createFixture() {

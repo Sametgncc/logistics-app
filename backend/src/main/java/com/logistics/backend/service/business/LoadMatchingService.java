@@ -19,6 +19,7 @@ import com.logistics.backend.service.user.NotificationService;
 import com.logistics.backend.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -104,6 +105,22 @@ public class LoadMatchingService {
                 .stream()
                 .map(loadMatchMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public LoadMatchResponse getAcceptedMatchForLoad(Long loadId, Long userId) {
+        LoadMatch match = loadMatchRepository.findByLoadIdAndStatus(loadId, MatchStatus.ACCEPTED)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("No accepted match found for load id: " + loadId));
+
+        boolean isParticipant = match.getLoad().getCustomer().getId().equals(userId)
+                || match.getRoutePlan().getDriver().getId().equals(userId);
+        if (!isParticipant) {
+            throw new AccessDeniedException("Only delivery participants can view the accepted match");
+        }
+
+        return loadMatchMapper.toResponse(match);
     }
 
     @Transactional

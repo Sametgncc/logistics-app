@@ -39,6 +39,14 @@ public class LoadMatchController {
         return loadMatchingService.getMatchesByLoadId(loadId);
     }
 
+    @GetMapping("/loads/{loadId}/accepted")
+    public LoadMatchResponse getAcceptedMatchForLoad(
+            @PathVariable Long loadId,
+            @AuthenticationPrincipal UserDetailsImpl currentUser
+    ) {
+        return loadMatchingService.getAcceptedMatchForLoad(loadId, currentUser.getId());
+    }
+
     @GetMapping("/route-plans/{routePlanId}")
     public List<LoadMatchResponse> getMatchesByRoutePlanId(@PathVariable Long routePlanId) {
         return loadMatchingService.getMatchesByRoutePlanId(routePlanId);
