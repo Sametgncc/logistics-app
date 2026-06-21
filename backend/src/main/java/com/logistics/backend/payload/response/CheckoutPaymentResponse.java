@@ -14,4 +14,5 @@ public class CheckoutPaymentResponse {
     BigDecimal amount;
     String currency;
     String paymentPageUrl;
+    String token;
 }

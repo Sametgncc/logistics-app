@@ -63,9 +63,6 @@ public class PaymentService {
         if (offer.getStatus() != OfferStatus.ACCEPTED) {
             throw new BadRequestException("Only ACCEPTED offers can be paid");
         }
-        paymentRepository.findByTransportOfferId(offerId).ifPresent(payment -> {
-            throw new BadRequestException("A payment session already exists for this offer");
-        });
 
         User buyer = offer.getCustomer();
         validateBuyerProfile(buyer);
@@ -73,22 +70,35 @@ public class PaymentService {
 
         CheckoutFormInitialize response = CheckoutFormInitialize.create(
                 buildInitializeRequest(offer, buyer, conversationId), options());
+
         if (!"success".equalsIgnoreCase(response.getStatus()) || response.getToken() == null) {
             throw new BadRequestException("iyzico checkout form could not be started: " + response.getErrorMessage());
         }
 
-        Payment payment = Payment.builder()
-                .transportOffer(offer)
-                .amount(offer.getPrice())
-                .currency(Currency.TRY.name())
-                .status(PaymentStatus.PENDING)
-                .iyzicoToken(response.getToken())
-                .conversationId(conversationId)
-                .createdAt(LocalDateTime.now())
-                .build();
+        // Varsa mevcut ödemeyi bul, yoksa yeni obje oluştur
+        Payment payment = paymentRepository.findByTransportOfferId(offerId).orElse(new Payment());
+
+        if (payment.getId() != null && payment.getStatus() == PaymentStatus.PAID) {
+            throw new BadRequestException("This offer has already been paid.");
+        }
+
+        // Kaydı yeni alınan iyzico değerleriyle güncelliyoruz
+        payment.setTransportOffer(offer);
+        payment.setAmount(offer.getPrice());
+        payment.setCurrency(Currency.TRY.name());
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setIyzicoToken(response.getToken());
+        payment.setConversationId(conversationId);
+        payment.setFailureReason(null);
+
+        // Eğer yeni kayıt oluşturuluyorsa createdAt değerini ata
+        if (payment.getId() == null) {
+            payment.setCreatedAt(LocalDateTime.now());
+        }
 
         return toResponse(paymentRepository.save(payment), response.getPaymentPageUrl());
     }
+
 
     @Transactional
     public CheckoutPaymentResponse verifyCheckout(String token) {
@@ -142,6 +152,8 @@ public class PaymentService {
         buyer.setGsmNumber(user.getPhone());
         buyer.setEmail(user.getEmail());
         buyer.setRegistrationAddress(user.getAddress());
+        buyer.setCity("Istanbul");
+        buyer.setCountry("Turkey");
         buyer.setIp("127.0.0.1");
         // Sandbox accepts the documented test identity number. Real identity data must be collected before live use.
         buyer.setIdentityNumber(sandbox ? "11111111111" : null);
@@ -201,6 +213,7 @@ public class PaymentService {
                 .amount(payment.getAmount())
                 .currency(payment.getCurrency())
                 .paymentPageUrl(paymentPageUrl)
+                .token(payment.getIyzicoToken())
                 .build();
     }
 }
