@@ -1,5 +1,6 @@
 package com.logistics.backend.controller.business;
 
+import com.logistics.backend.exception.BadRequestException;
 import com.logistics.backend.payload.chat.ChatMessageDto;
 import com.logistics.backend.service.business.ChatMessageService;
 import jakarta.validation.Valid;
@@ -12,7 +13,6 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
-import java.util.Map;
 
 @RestController
 @MessageMapping("/chat")
@@ -22,24 +22,24 @@ public class ChatController {
     private final ChatMessageService chatMessageService;
     private final SimpMessagingTemplate messagingTemplate;
 
+    // ChatController.java içindeki send metodunu şu şekilde güncelle:
     @MessageMapping("/send")
-    public void sendMessage(@Valid @Payload Map<String, Object> rawMessage, ChatMessageDto chatMessageDto, Principal principal) {
-        System.out.println("DEBUG: Gelen recipientId: " + chatMessageDto.getRecipientId());
-        System.out.println("Gelen ham veri: " + rawMessage);
-        // Eğer veri geliyorsa, burada "recipientId" anahtarını kontrol edebiliriz
-        if (rawMessage.get("recipientId") == null) {
-            System.out.println("UYARI: recipientId boş geldi!");
+    public void sendMessage(@Valid @Payload ChatMessageDto chatMessageDto, Principal principal) {
+        if (chatMessageDto.getRecipientId() == null) {
+            throw new BadRequestException("Alıcı zorunludur!");
         }
+
         if (principal == null) {
             throw new AccessDeniedException("WebSocket bağlantısı doğrulanmadı");
         }
 
+        // 1. Veritabanına kaydet
         ChatMessageDto savedMsg = chatMessageService.saveMessage(
                 Long.valueOf(principal.getName()),
                 chatMessageDto
         );
 
-        // 2. Mesajı Alıcıya Gönder (DTO olarak gidiyor)
+        // 2. Mesajı Alıcıya Gönder
         messagingTemplate.convertAndSendToUser(
                 String.valueOf(savedMsg.getRecipientId()),
                 "/queue/messages",
